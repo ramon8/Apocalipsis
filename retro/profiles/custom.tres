@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="RetroProfile" format=3 uid="uid://bx2e650vkv1gq"]
+
+[ext_resource type="Texture2D" uid="uid://baf431cmjoafc" path="res://retro/palettes/ramp_32.png" id="1_ivivw"]
+[ext_resource type="Script" uid="uid://dmcxbj5iffl4t" path="res://retro/retro_profile.gd" id="2_qjvsk"]
+
+[resource]
+script = ExtResource("2_qjvsk")
+resolution = 3
+custom_resolution = Vector2i(1280, 720)
+dither_strength = 0.78
+dither_space = 0
+dither_spread = 0.045
+quantize_mode = 1
+quantize_strength = 0.17
+color_levels = 11
+palette = ExtResource("1_ivivw")
+grain_strength = 0.075
+grain_speed = 13.5
+vignette_strength = 1.0
+vignette_radius = 0.18
+vignette_softness = 0.91
+vertex_snap_strength = 0.42
+affine_strength = 0.16
+fog_enabled = false
+fog_color = Color(0.2, 0.18, 0.25, 1)
+fog_density = 0.385

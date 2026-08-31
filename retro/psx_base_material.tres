@@ -1,0 +1,13 @@
+[gd_resource type="ShaderMaterial" load_steps=3 format=3]
+
+[ext_resource type="Shader" path="res://retro/psx_base.gdshader" id="1_shader"]
+[ext_resource type="Texture2D" path="res://retro/demo/checker.png" id="2_checker"]
+
+[resource]
+shader = ExtResource("1_shader")
+shader_parameter/albedo_tex = ExtResource("2_checker")
+shader_parameter/albedo_color = Color(1, 1, 1, 1)
+shader_parameter/uv_scale = Vector2(1, 1)
+shader_parameter/snap_multiplier = 1.0
+shader_parameter/affine_multiplier = 1.0
+shader_parameter/fog_multiplier = 1.0

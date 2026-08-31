@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://4ma6b4bqmghe"]
+
+[ext_resource type="Script" uid="uid://6u7bxpnxvdc0" path="res://scenes/props/campfire.gd" id="1_campfire"]
+
+[node name="Campfire" type="Node3D" unique_id=1966567428]
+script = ExtResource("1_campfire")
+charred_tint = Color(0.2257849, 1.3091564e-05, 0.917454, 1)
+fire_height = 1.8
+fire_width = 0.95
+fire_intensity = 0.85
+smoke_height = 9.1
+smoke_width = 5.2
+smoke_density = 1.0

@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="RetroProfile" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://retro/retro_profile.gd" id="1_profile"]
+[ext_resource type="Texture2D" path="res://retro/palettes/pico8_16.png" id="2_palette"]
+
+[resource]
+script = ExtResource("1_profile")
+resolution = 0
+custom_resolution = Vector2i(320, 180)
+dither_enabled = true
+dither_strength = 1.0
+dither_space = 1
+dither_spread = 0.0
+quantize_enabled = true
+quantize_mode = 0
+quantize_strength = 1.0
+color_levels = 8
+palette = ExtResource("2_palette")
+grain_enabled = true
+grain_strength = 0.08
+grain_speed = 12.0
+vignette_enabled = true
+vignette_strength = 0.45
+vignette_radius = 0.6
+vignette_softness = 0.5
+vertex_snap_strength = 1.0
+affine_strength = 1.0
+fog_enabled = true
+fog_color = Color(0.2, 0.18, 0.25, 1)
+fog_density = 0.08

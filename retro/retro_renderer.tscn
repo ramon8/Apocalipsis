@@ -1,0 +1,43 @@
+[gd_scene format=3 uid="uid://d3r1kv24jqf6k"]
+
+[ext_resource type="Script" uid="uid://cqa4ak2f101vl" path="res://retro/retro_renderer.gd" id="1_renderer"]
+[ext_resource type="Resource" path="res://retro/profiles/custom.tres" id="2_c72hy"]
+[ext_resource type="Shader" uid="uid://c8pxk0asu0fn1" path="res://retro/retro_post.gdshader" id="2_post"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_post"]
+shader = ExtResource("2_post")
+shader_parameter/internal_resolution = Vector2(640, 360)
+shader_parameter/dither_enabled = true
+shader_parameter/dither_strength = 0.35
+shader_parameter/dither_space = 1
+shader_parameter/dither_offset = Vector2(0, 0)
+shader_parameter/dither_spread = 0.0
+shader_parameter/quantize_enabled = true
+shader_parameter/quantize_mode = 0
+shader_parameter/quantize_strength = 1.0
+shader_parameter/color_levels = 32
+shader_parameter/palette_size = 16
+shader_parameter/grain_enabled = true
+shader_parameter/grain_strength = 0.03
+shader_parameter/grain_speed = 8.0
+shader_parameter/vignette_enabled = true
+shader_parameter/vignette_strength = 0.25
+shader_parameter/vignette_radius = 0.75
+shader_parameter/vignette_softness = 0.6
+
+[node name="RetroRenderer" type="Node" unique_id=773148761]
+script = ExtResource("1_renderer")
+profile = ExtResource("2_c72hy")
+
+[node name="GameViewport" type="SubViewport" parent="." unique_id=186918644]
+size = Vector2i(640, 360)
+render_target_update_mode = 4
+
+[node name="Post" type="ColorRect" parent="." unique_id=1595444530]
+material = SubResource("ShaderMaterial_post")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
