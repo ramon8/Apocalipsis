@@ -1,14 +1,15 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://1eftepgfsafa"]
 
-[ext_resource type="Script" path="res://scenes/camera/isometric_camera.gd" id="1_rig"]
+[ext_resource type="Script" uid="uid://bbly5gmpmri2g" path="res://scenes/camera/isometric_camera.gd" id="1_rig"]
 
-[node name="CameraRig" type="Node3D" groups=["camera_rig"]]
+[node name="CameraRig" type="Node3D" unique_id=1295285140 groups=["camera_rig"]]
 script = ExtResource("1_rig")
+initial_yaw_deg = 15.0
 
-[node name="Pivot" type="Node3D" parent="."]
+[node name="Pivot" type="Node3D" parent="." unique_id=1460125141]
 transform = Transform3D(1, 0, 0, 0, 0.816497, -0.57735, 0, 0.57735, 0.816497, 0, 0, 0)
 
-[node name="Camera3D" type="Camera3D" parent="Pivot"]
+[node name="Camera3D" type="Camera3D" parent="Pivot" unique_id=1810481822]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 30)
 projection = 1
 size = 12.0

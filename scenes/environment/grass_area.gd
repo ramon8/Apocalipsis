@@ -108,6 +108,12 @@ const GRASS_SHADER := preload("res://scenes/environment/grass.gdshader")
 	set(value):
 		lean = value
 		_update_material()
+## 0 = blades stay vertical (classic); 1 = full billboard: they also tilt to face the
+## camera head-on when it pitches. Values in between blend.
+@export_range(0.0, 1.0, 0.05) var billboard_tilt := 0.0:
+	set(value):
+		billboard_tilt = value
+		_update_material()
 
 @export_group("Seed")
 @export var seed := 1:
@@ -218,3 +224,4 @@ func _update_material() -> void:
 	mat.set_shader_parameter("sway_amount", sway_amount)
 	mat.set_shader_parameter("flutter_amount", flutter_amount)
 	mat.set_shader_parameter("lean", lean)
+	mat.set_shader_parameter("billboard_tilt", billboard_tilt)

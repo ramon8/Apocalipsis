@@ -2,20 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cq5iibu8vcy46"
-path.s3tc="res://.godot/imported/character_lord-of-the-maps-1x.png-3dbd50915e9c54373047ff996167cbe9.s3tc.ctex"
+uid="uid://m2e0fhxtrqqt"
+path.s3tc="res://.godot/imported/flame_blob.png-9c1b18d26f58da4118334b69149e9954.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
-generator_parameters={
-"md5": "0b43789ca217fa8409371e50f92c9ec1"
-}
 
 [deps]
 
-source_file="res://assets/blender_raw/character_lord-of-the-maps-1x.png"
-dest_files=["res://.godot/imported/character_lord-of-the-maps-1x.png-3dbd50915e9c54373047ff996167cbe9.s3tc.ctex"]
+source_file="res://assets/textures/fx/flame_blob.png"
+dest_files=["res://.godot/imported/flame_blob.png-9c1b18d26f58da4118334b69149e9954.s3tc.ctex"]
 
 [params]
 

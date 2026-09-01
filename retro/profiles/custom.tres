@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="RetroProfile" format=3 uid="uid://bx2e650vkv1gq"]
+[gd_resource type="Resource" script_class="RetroProfile" format=3 uid="uid://degxoxbll5pqb"]
 
 [ext_resource type="Texture2D" uid="uid://baf431cmjoafc" path="res://retro/palettes/ramp_32.png" id="1_ivivw"]
 [ext_resource type="Script" uid="uid://dmcxbj5iffl4t" path="res://retro/retro_profile.gd" id="2_qjvsk"]
@@ -6,7 +6,7 @@
 [resource]
 script = ExtResource("2_qjvsk")
 resolution = 3
-custom_resolution = Vector2i(1280, 720)
+custom_resolution = Vector2i(2560, 1440)
 dither_strength = 0.78
 dither_space = 0
 dither_spread = 0.045

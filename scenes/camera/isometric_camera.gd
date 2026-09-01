@@ -30,8 +30,9 @@ enum MouseDragButton { LEFT, RIGHT, MIDDLE }
 	set(value):
 		zoom = clampf(value, min_zoom, max_zoom) if is_node_ready() else value
 		_apply_camera_settings()
-## Orthographic only: how far back the camera physically sits. Doesn't change the view,
-## only what gets clipped by the near plane (keep it larger than your tallest geometry).
+## Orthographic only: MINIMUM distance the camera sits back. Doesn't change the view, only
+## what gets clipped. The real offset grows automatically with zoom and the shallowest pitch
+## so the ground at the bottom of the screen never ends up behind the camera.
 @export_range(1.0, 200.0, 0.5) var ortho_camera_offset := 30.0:
 	set(value):
 		ortho_camera_offset = value
@@ -89,6 +90,10 @@ enum MouseDragButton { LEFT, RIGHT, MIDDLE }
 @export var min_zoom := 4.0
 @export var max_zoom := 40.0
 
+## Poner un AudioListener3D en el rig: los sonidos 3D se atenuan por distancia al
+## JUGADOR (el rig lo sigue), no a la camara, que esta a 30 m. El paneo estereo sigue el yaw.
+@export var use_audio_listener := true
+
 @onready var _pivot: Node3D = $Pivot
 @onready var _camera: Camera3D = $Pivot/Camera3D
 
@@ -101,6 +106,11 @@ var _lean := Vector3.ZERO
 
 func _ready() -> void:
 	add_to_group("camera_rig")
+	if use_audio_listener and not Engine.is_editor_hint():
+		var listener := AudioListener3D.new()
+		listener.name = "Listener"
+		add_child(listener)
+		listener.make_current()
 	_target_yaw = deg_to_rad(initial_yaw_deg)
 	rotation.y = _target_yaw
 	_target_pitch = pitch_deg
@@ -226,7 +236,15 @@ func _apply_camera_settings() -> void:
 	if projection_mode == ProjectionMode.ORTHOGRAPHIC:
 		_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 		_camera.size = zoom
-		_camera.position = Vector3(0.0, 0.0, ortho_camera_offset)
+		# Ground seen at the bottom edge of the screen sits zoom/2 * cot(pitch) closer than
+		# the target; at the shallowest pitch of the tilt band that can exceed a fixed offset
+		# and get clipped (it would be behind the camera). Push back as far as needed.
+		var shallowest := pitch_deg - (pitch_range_deg if mouse_pitch_enabled else 0.0)
+		var needed := zoom * 0.5 / tan(deg_to_rad(maxf(shallowest, 5.0))) + 10.0
+		var offset := maxf(ortho_camera_offset, needed)
+		_camera.position = Vector3(0.0, 0.0, offset)
+		# Keep the far plane covering the ground at the TOP edge (offset + the same amount).
+		_camera.far = maxf(_camera.far, offset + needed + 50.0)
 	else:
 		_camera.projection = Camera3D.PROJECTION_PERSPECTIVE
 		_camera.fov = fov

@@ -31,6 +31,28 @@ extends CharacterBody3D
 ## Fraction of the pickup clip at which the hand "reaches" the item (backpack appears,
 ## pickup_reached is emitted). The drop plays the same clip backwards and uses it too.
 @export_range(0.0, 1.0, 0.05) var pickup_reach_fraction := 0.5
+## Channelled "lighting a fire" clips: start (one-shot) -> loop (while striking) -> end.
+@export var light_fire_start_animation := "light_fire_start"
+## Pose de espera durante el minijuego (en bucle); el golpe solo suena al pulsar.
+@export var light_fire_idle_animation := "light_fire_idle"
+## Clip del golpe: se reproduce UNA vez por pulsacion y vuelve a la pose de espera.
+@export var light_fire_strike_animation := "light_fire"
+@export var light_fire_end_animation := "light_fire_end"
+## Agacharse (Ctrl): start -> idle en bucle -> end al moverse o pulsar Ctrl de nuevo.
+@export var crouch_start_animation := "crouch_start"
+@export var crouch_idle_animation := "crouch_idle"
+@export var crouch_end_animation := "crouch_end"
+@export var crouch_action: StringName = &"crouch"
+
+@export_group("Carry")
+## Huesos de las manos: el objeto llevado se ancla al punto medio entre ambos y se
+## mueve con las animaciones. Si faltan, se usa el anclaje fijo de abajo.
+@export var carry_bones: PackedStringArray = ["hand.l", "hand.r"]
+## Ajuste local extra sobre el punto medio de las manos (-Z = hacia delante del personaje).
+@export var carry_offset := Vector3(0.0, -0.2, -0.3)
+## Anclaje fijo de reserva (sin huesos): delante y altura.
+@export var carry_forward := 0.55
+@export var carry_height := 0.75
 ## Playback speed of the pickup/drop clip (2 = twice as fast).
 @export_range(0.25, 4.0, 0.05) var pickup_animation_speed := 2.0
 ## Input action that drops the backpack (plays the pickup clip in reverse).
@@ -45,6 +67,8 @@ extends CharacterBody3D
 @export_range(0.5, 1.5, 0.01) var drop_pitch := 0.85
 ## Cross-fade time between animations, in seconds.
 @export_range(0.0, 1.0, 0.01) var blend_time := 0.3
+## Cross-fade for ACTIONS (pickup, crouch, channels): short so they respond instantly.
+@export_range(0.0, 0.5, 0.01) var action_blend_time := 0.08
 ## Below this horizontal speed the character is considered idle.
 @export var idle_threshold := 0.15
 ## Speed (m/s) at which the Walk clip plays at 1x; the clip is time-scaled to match velocity.
@@ -137,6 +161,9 @@ extends CharacterBody3D
 signal pickup_reached
 ## Emitted when the pickup clip ends and control returns to the player.
 signal pickup_finished
+## Canal sin fase idle (agacharse a coger/soltar): emitido al acabar el clip de inicio,
+## justo antes del clip de cierre. Es el momento de coger o dejar el objeto.
+signal channel_apex(kind: String)
 ## Emitted (reverse clip at the reach fraction) when the bag leaves the hand.
 signal backpack_dropped(pickup: Node3D)
 
@@ -149,7 +176,13 @@ var _speed := 0.0
 var _action_playing := false
 var _action_reached := false
 var _action_reverse := false
+var _channel_phase := ""  # "" | "start" | "idle" | "strike" | "end"
+var _channel := {}        # nombres de clips del canal activo + "kind"
 var _hold_modifier: HoldPoseModifier
+## Ancla para objetos en brazos; sigue las manos del esqueleto.
+var carry_slot: Node3D
+var _carry_bone_a := -1
+var _carry_bone_b := -1
 var _hold_tween: Tween
 var _xray_mat: ShaderMaterial
 var _xray_full_alpha := 0.75
@@ -177,6 +210,15 @@ func _ready() -> void:
 			_xray_mat.set_shader_parameter("alpha", 0.0)
 		_apply_overlay(_model, _xray_mat)
 	_camera_rig = get_tree().get_first_node_in_group("camera_rig")
+	carry_slot = Node3D.new()
+	carry_slot.name = "CarrySlot"
+	add_child(carry_slot)
+	var sk := _model.find_child("Skeleton3D", true, false) as Skeleton3D
+	if _skeleton == null:
+		_skeleton = sk
+	if sk and carry_bones.size() == 2:
+		_carry_bone_a = sk.find_bone(carry_bones[0])
+		_carry_bone_b = sk.find_bone(carry_bones[1])
 	if _anim == null:
 		push_warning("Player: no AnimationPlayer found under Model; animations disabled.")
 	else:
@@ -185,6 +227,13 @@ func _ready() -> void:
 		walk_animation = _resolve_animation_name(walk_animation)
 		run_animation = _resolve_animation_name(run_animation)
 		pickup_animation = _resolve_animation_name(pickup_animation)
+		light_fire_start_animation = _resolve_animation_name(light_fire_start_animation)
+		light_fire_idle_animation = _resolve_animation_name(light_fire_idle_animation)
+		light_fire_strike_animation = _resolve_animation_name(light_fire_strike_animation)
+		light_fire_end_animation = _resolve_animation_name(light_fire_end_animation)
+		crouch_start_animation = _resolve_animation_name(crouch_start_animation)
+		crouch_idle_animation = _resolve_animation_name(crouch_idle_animation)
+		crouch_end_animation = _resolve_animation_name(crouch_end_animation)
 		# Safety net in case the import settings didn't mark the clips as looping.
 		for anim_name in [idle_animation, walk_animation, run_animation]:
 			if not _anim.has_animation(anim_name):
@@ -242,6 +291,8 @@ func _physics_process(delta: float) -> void:
 	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var direction := _camera_relative_direction(input)
 	var running := _is_running()
+	if is_crouching() and input != Vector2.ZERO:
+		stop_channeling()  # crouch_end; el movimiento se libera al terminar el clip
 	if _action_playing:
 		direction = Vector3.ZERO
 		running = false
@@ -271,7 +322,13 @@ func _physics_process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if Engine.is_editor_hint():
 		return
-	if event.is_action_pressed(drop_action) and show_backpack and not _action_playing:
+	if event.is_action_pressed(crouch_action):
+		get_viewport().set_input_as_handled()
+		if is_crouching():
+			stop_channeling()
+		elif not _action_playing:
+			start_crouch()
+	elif event.is_action_pressed(drop_action) and show_backpack and not _action_playing and not is_carrying():
 		get_viewport().set_input_as_handled()
 		play_drop()
 	elif event.is_action_pressed(hold_toggle_action):
@@ -304,9 +361,9 @@ func _start_action(reverse: bool) -> bool:
 	_anim.get_animation(pickup_animation).loop_mode = Animation.LOOP_NONE
 	_anim.speed_scale = 1.0
 	if reverse:
-		_anim.play(pickup_animation, blend_time, -pickup_animation_speed, true)
+		_anim.play(pickup_animation, action_blend_time, -pickup_animation_speed, true)
 	else:
-		_anim.play(pickup_animation, blend_time, pickup_animation_speed)
+		_anim.play(pickup_animation, action_blend_time, pickup_animation_speed)
 	_current_anim = pickup_animation
 	return true
 
@@ -316,6 +373,8 @@ func is_action_playing() -> bool:
 
 
 func _update_action() -> void:
+	if _channel_phase != "":
+		return  # las transiciones del canal las lleva _on_animation_finished
 	var anim := _anim.get_animation(pickup_animation)
 	var t := _anim.current_animation_position / maxf(anim.length, 0.001) \
 			if _anim.current_animation == pickup_animation else 1.0
@@ -354,8 +413,122 @@ func _spawn_dropped_backpack() -> void:
 
 
 func _on_animation_finished(anim_name: StringName) -> void:
-	if _action_playing and String(anim_name) == pickup_animation:
+	if not _action_playing:
+		return
+	var n := String(anim_name)
+	if _channel_phase == "start" and n == _channel.get("start", "?"):
+		if _channel.has("idle"):
+			_channel_to_idle()
+		else:
+			channel_apex.emit(_channel.get("kind", ""))
+			_play_channel_end()
+	elif _channel_phase == "strike" and n == _channel.get("strike", "?"):
+		_channel_to_idle()
+	elif _channel_phase == "end" and n == _channel.get("end", "?"):
+		_channel_phase = ""
+		_channel = {}
 		_finish_action()
+	elif _channel_phase == "" and n == pickup_animation:
+		_finish_action()
+
+
+## Canal generico: start (una vez) -> idle (bucle) [-> strike por pulsacion] -> end.
+## Bloquea el movimiento mientras dura.
+func _start_channel(anims: Dictionary) -> bool:
+	if _anim == null or _action_playing or not _anim.has_animation(anims.get("start", "")):
+		return false
+	_channel = anims
+	_action_playing = true
+	_action_reached = true  # no hay "reach" en canales
+	_channel_phase = "start"
+	_anim.get_animation(_channel.start).loop_mode = Animation.LOOP_NONE
+	_anim.speed_scale = 1.0
+	_anim.play(_channel.start, action_blend_time)
+	_current_anim = _channel.start
+	return true
+
+
+## Bucle "encendiendo fuego" del minijuego de la hoguera.
+func start_fire_lighting() -> bool:
+	return _start_channel({
+		"kind": "fire",
+		"start": light_fire_start_animation,
+		"idle": light_fire_idle_animation,
+		"strike": light_fire_strike_animation,
+		"end": light_fire_end_animation,
+	})
+
+
+## Agacharse: Ctrl (o llamada directa). Moverse o repetir Ctrl lo termina.
+func start_crouch() -> bool:
+	return _start_channel({
+		"kind": "crouch",
+		"start": crouch_start_animation,
+		"idle": crouch_idle_animation,
+		"end": crouch_end_animation,
+	})
+
+
+func is_crouching() -> bool:
+	return _action_playing and _channel.get("kind", "") == "crouch" and _channel_phase != "end"
+
+
+func is_carrying() -> bool:
+	return carry_slot != null and carry_slot.get_child_count() > 0
+
+
+## Secuencia corta agacharse-y-volver (coger/soltar objetos): crouch_start ->
+## channel_apex -> crouch_end. Bloquea el movimiento mientras dura.
+func play_crouch_action() -> bool:
+	return _start_channel({
+		"kind": "crouch_grab",
+		"start": crouch_start_animation,
+		"end": crouch_end_animation,
+	})
+
+
+## Pose de espera del canal (en bucle) hasta la siguiente pulsacion o el cierre.
+func _channel_to_idle() -> void:
+	_channel_phase = "idle"
+	_anim.get_animation(_channel.idle).loop_mode = Animation.LOOP_LINEAR
+	_anim.play(_channel.idle, 0.1)
+	_current_anim = _channel.idle
+
+
+## Golpe (canal con "strike"): una pasada del clip y de vuelta a la espera.
+func play_fire_strike() -> void:
+	if (_channel_phase != "idle" and _channel_phase != "strike") or not _channel.has("strike"):
+		return
+	_channel_phase = "strike"
+	var anim := _anim.get_animation(_channel.strike)
+	anim.loop_mode = Animation.LOOP_NONE
+	_anim.play(_channel.strike, 0.05)
+	_anim.seek(0.0)
+	_current_anim = _channel.strike
+
+
+## Sale del canal con el clip de cierre y devuelve el control.
+func stop_channeling() -> void:
+	if _channel_phase == "" or _channel_phase == "end":
+		return
+	_play_channel_end()
+
+
+func _play_channel_end() -> void:
+	if not _channel.has("end") or not _anim.has_animation(_channel.end):
+		_channel_phase = ""
+		_channel = {}
+		_finish_action()
+		return
+	_channel_phase = "end"
+	_anim.get_animation(_channel.end).loop_mode = Animation.LOOP_NONE
+	_anim.play(_channel.end, 0.1)
+	_current_anim = _channel.end
+
+
+## Alias historico usado por la hoguera.
+func stop_fire_lighting() -> void:
+	stop_channeling()
 
 
 func _finish_action() -> void:
@@ -489,6 +662,19 @@ func _play_footstep(running: bool) -> void:
 	_step_player.volume_db = footstep_volume_db + (run_volume_boost_db if running else 0.0)
 	_step_player.pitch_scale = run_pitch if running else 1.0
 	_step_player.play()
+
+
+func _process(_delta: float) -> void:
+	if Engine.is_editor_hint() or carry_slot == null or carry_slot.get_child_count() == 0:
+		return
+	carry_slot.rotation.y = _model.rotation.y - deg_to_rad(model_yaw_offset_deg)
+	if _carry_bone_a >= 0 and _carry_bone_b >= 0 and _skeleton:
+		# Punto medio de las dos manos, en coordenadas de mundo: el objeto acompana la animacion.
+		var a := _skeleton.global_transform * _skeleton.get_bone_global_pose(_carry_bone_a).origin
+		var b := _skeleton.global_transform * _skeleton.get_bone_global_pose(_carry_bone_b).origin
+		carry_slot.global_position = (a + b) * 0.5 + carry_slot.global_transform.basis * carry_offset
+	else:
+		carry_slot.position = _facing_direction() * carry_forward + Vector3(0.0, carry_height, 0.0)
 
 
 func _is_running() -> bool:

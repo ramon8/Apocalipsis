@@ -54,10 +54,12 @@ func _ready() -> void:
 		return
 	_build_area()
 	_build_prompt()
+	InteractionManager.changed.connect(_update_prompt)
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _taken or _player_in_range == null:
+	if _taken or _player_in_range == null or _player_in_range.is_carrying() \
+			or not InteractionManager.is_current(self):
 		return
 	if event.is_action_pressed(interact_action):
 		get_viewport().set_input_as_handled()
@@ -156,12 +158,20 @@ func _on_body_entered(body: Node3D) -> void:
 	if _taken or not (body is Player):
 		return
 	_player_in_range = body as Player
-	_prompt.show_at(_body.global_position)
+	InteractionManager.enter(self, 0)
 
 
 func _on_body_exited(body: Node3D) -> void:
 	if body == _player_in_range:
 		_player_in_range = null
+		InteractionManager.leave(self)
+
+
+func _update_prompt() -> void:
+	if _player_in_range and not _taken and not _player_in_range.is_carrying() \
+			and InteractionManager.is_current(self):
+		_prompt.show_at(_body.global_position)
+	elif _prompt.visible:
 		_prompt.pop_out()
 
 
@@ -170,6 +180,7 @@ func _grab(player: Player) -> void:
 		return
 	_taken = true
 	_player_in_range = null
+	InteractionManager.leave(self)
 	_prompt.pop_out()
 	# Play the character's pickup animation; the bag vanishes when the hand reaches it.
 	if player.play_pickup():

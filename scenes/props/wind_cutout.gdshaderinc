@@ -30,14 +30,16 @@ void vertex() {
 	// QuadMesh UV: v = 0 at the top edge, 1 at the bottom (ground). h: 0 ground -> 1 top.
 	float h = clamp(1.0 - UV.y, 0.0, 1.0);
 	// Per-instance phase so neighbouring props don't move in lockstep.
-	float phase = dot(NODE_POSITION_WORLD.xz, vec2(1.7, 2.3));
+	// MODEL_MATRIX origin = per-instance position (also inside a MultiMesh).
+	vec3 inst_pos = MODEL_MATRIX[3].xyz;
+	float phase = dot(inst_pos.xz, vec2(1.7, 2.3));
 	float t = TIME * wind_speed;
 
 	// --- spatial wind: one sample per prop (NODE_POSITION_WORLD) so the whole prop
 	// feels the same gust and doesn't tear. UV scrolls against the wind direction so
 	// the pattern moves downwind. Wrapped with fract() so the texture repeats.
 	vec2 scroll = wind_direction * (TIME * wind_noise_scroll);
-	vec2 nuv = fract((NODE_POSITION_WORLD.xz - scroll) / max(wind_noise_scale, 0.001));
+	vec2 nuv = fract((inst_pos.xz - scroll) / max(wind_noise_scale, 0.001));
 	float n = textureLod(wind_noise, nuv, 0.0).r;                 // 0..1, mean ~0.5
 	float n2 = textureLod(wind_noise, fract(nuv + vec2(0.37, 0.61)), 0.0).r;
 	float spatial = mix(1.0, n * 2.0, wind_noise_influence);       // 0..2, mean 1

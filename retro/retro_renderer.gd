@@ -59,6 +59,8 @@ var _original_scale_aspect: Window.ContentScaleAspect
 
 
 func _ready() -> void:
+	# Un SubViewport no escucha audio 3D por defecto; el juego vive aqui dentro.
+	game_viewport.audio_listener_enable_3d = true
 	_post_material = post.material as ShaderMaterial
 	_post_material.set_shader_parameter("screen_tex", game_viewport.get_texture())
 	post.mouse_filter = Control.MOUSE_FILTER_IGNORE

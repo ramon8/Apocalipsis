@@ -27,6 +27,9 @@ uniform float sway_amount : hint_range(0.0, 1.0, 0.01) = 0.12;
 uniform float flutter_amount : hint_range(0.0, 0.5, 0.01) = 0.04;
 // Constant lean so blades aren't perfectly vertical (metres at the tip).
 uniform float lean : hint_range(0.0, 0.5, 0.01) = 0.04;
+// 0 = blades stay vertical (only rotate around Y towards the camera);
+// 1 = full billboard: blades also tilt to face the camera head-on at any pitch.
+uniform float billboard_tilt : hint_range(0.0, 1.0, 0.05) = 0.0;
 // Bend curvature: higher = only the tip moves.
 uniform float bend_power : hint_range(1.0, 3.0, 0.1) = 1.8;
 
@@ -43,7 +46,10 @@ void vertex() {
 
 	// Billboard around Y: camera right vector flattened onto XZ.
 	vec3 cam_right = normalize(vec3(INV_VIEW_MATRIX[0].x, 0.0, INV_VIEW_MATRIX[0].z));
-	vec3 world = origin + cam_right * (VERTEX.x * blade_width) + vec3(0.0, h * height, 0.0);
+	// Full billboard: blade "up" leans towards the camera's up so the strip faces the
+	// camera head-on regardless of pitch (blended by billboard_tilt).
+	vec3 up = normalize(mix(vec3(0.0, 1.0, 0.0), INV_VIEW_MATRIX[1].xyz, billboard_tilt));
+	vec3 world = origin + cam_right * (VERTEX.x * blade_width) + up * (h * height);
 
 	// Wind (same model as the props, sampled per blade at its root).
 	vec2 scroll = wind_direction * (TIME * wind_noise_scroll);
