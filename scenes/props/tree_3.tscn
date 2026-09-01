@@ -1,0 +1,11 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" uid="uid://nsud7gok2ea8" path="res://scenes/props/tree.gd" id="1_tree"]
+[ext_resource type="Texture2D" uid="uid://b4gg2eordwve0" path="res://assets/textures/tree_3.png" id="2_tex"]
+
+[node name="Tree3" type="Node3D"]
+script = ExtResource("1_tree")
+texture = ExtResource("2_tex")
+size_variation = 0.0
+random_yaw = false
+interaction_enabled = false

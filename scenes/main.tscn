@@ -1,8 +1,10 @@
 [gd_scene format=3 uid="uid://dirhclo63wfb1"]
 
 [ext_resource type="PackedScene" path="res://scenes/environment/scatter_world.tscn" id="1_85g3d"]
+[ext_resource type="PackedScene" uid="uid://qldxvm3302sa" path="res://scenes/props/tree.tscn" id="2_eb6dy"]
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_player"]
 [ext_resource type="PackedScene" uid="uid://1eftepgfsafa" path="res://scenes/camera/isometric_camera.tscn" id="3_camera"]
+[ext_resource type="PackedScene" path="res://scenes/props/tree_2.tscn" id="3_trceg"]
 [ext_resource type="Texture2D" uid="uid://e6aio3lmbs4e" path="res://assets/textures/dirt.png" id="4_checker"]
 [ext_resource type="PackedScene" uid="uid://c7xgbnlulgfl4" path="res://scenes/environment/wind.tscn" id="7_wind"]
 [ext_resource type="PackedScene" path="res://scenes/props/backpack.tscn" id="8_backpack"]
@@ -43,6 +45,7 @@ size = Vector3(1000, 1, 1000)
 [node name="World" type="Node3D" parent="." unique_id=863254421]
 
 [node name="ScatterWorld" parent="World" unique_id=1742216399 instance=ExtResource("1_85g3d")]
+tree_scenes = Array[PackedScene]([ExtResource("2_eb6dy"), ExtResource("3_trceg")])
 prop_density = 15.0
 bush_weight = 0.25
 prop_min_distance = 1.9
@@ -70,7 +73,7 @@ directional_shadow_max_distance = 250.0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="World/Floor" unique_id=36483498]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.06028366, 0.5, 0.028560638)
 material_override = ExtResource("9_ground")
 mesh = SubResource("PlaneMesh_floor")
 
@@ -84,6 +87,7 @@ gust_travel_speed = 4.0
 local_direction_variation_deg = 25.0
 
 [node name="Player" parent="World" unique_id=872944500 instance=ExtResource("2_player")]
+transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, 30.14471, 0, 0)
 walk_speed = 2.0
 run_speed = 3.8
 acceleration = 24.0
@@ -102,18 +106,18 @@ zoom = 55.0
 max_zoom = 80.0
 
 [node name="Backpack" parent="World" unique_id=504992306 instance=ExtResource("8_backpack")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24.185242, -0.46839952, -5.35367)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 37.88851, -0.46839952, -0.968462)
 pickup_radius = 0.9
 
 [node name="Campfire" parent="World" unique_id=1285043843 instance=ExtResource("11_trceg")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25.563562, 0, -5.4844685)
-sweep_time = 3.0
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 36.32557, 0, -5.4844685)
+sweep_time = 2.0
 flint_random_volume_db = 2.2
 
 [node name="Dog" parent="World" unique_id=1393326967 node_paths=PackedStringArray("target") instance=ExtResource("13_dog")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, -2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 172.77873, 0, 31.642466)
 target = NodePath("../Player")
 
 [node name="Pot" parent="World" unique_id=856992652 instance=ExtResource("12_trceg")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25.924105, 0, -3.8909638)
-lift_volume_db = -40.0
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40.009575, 0, -3.8909638)
+lift_volume_db = -35.0

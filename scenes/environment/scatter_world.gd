@@ -30,7 +30,13 @@ extends Node3D
 @export_range(0.1, 2.0, 0.1) var update_interval := 0.3
 
 @export_group("Trees & bushes")
-@export var tree_scene: PackedScene = preload("res://scenes/props/tree.tscn")
+## Variantes de arbol: cada prop de tipo arbol elige una al azar (determinista por celda).
+## Debe ir en paralelo con tree_textures (misma posicion = misma variante).
+@export var tree_scenes: Array[PackedScene] = [
+	preload("res://scenes/props/tree.tscn"),
+	preload("res://scenes/props/tree_2.tscn"),
+	preload("res://scenes/props/tree_3.tscn"),
+]
 @export var bush_scene: PackedScene = preload("res://scenes/props/bush.tscn")
 ## Props por 100 m2 dentro de las zonas densas (como TreeArea).
 @export_range(0.0, 50.0, 0.1) var prop_density := 4.0
@@ -38,8 +44,12 @@ extends Node3D
 @export var tree_weight := 1.0
 @export var bush_weight := 1.5
 @export_range(0.5, 10.0, 0.1) var prop_min_distance := 2.5
-## Textura/altura usadas por el LOD lejano (deben corresponder a las escenas).
-@export var tree_texture: Texture2D = preload("res://assets/textures/tree.png")
+## Texturas/altura usadas por el LOD lejano (en paralelo con tree_scenes).
+@export var tree_textures: Array[Texture2D] = [
+	preload("res://assets/textures/tree.png"),
+	preload("res://assets/textures/tree_2.png"),
+	preload("res://assets/textures/tree_3.png"),
+]
 @export var bush_texture: Texture2D = preload("res://assets/textures/bush.png")
 @export var tree_height := 6.0
 @export var bush_height := 1.8
@@ -82,7 +92,7 @@ var _pending: Array[Vector2i] = []
 var _pending_lod := {}
 var _noise := FastNoiseLite.new()
 var _cross_mesh: ArrayMesh
-var _tree_mat: ShaderMaterial
+var _tree_mats: Array[ShaderMaterial] = []
 var _bush_mat: ShaderMaterial
 var _timer := 0.0
 var _player: Node3D
@@ -110,8 +120,15 @@ func _refresh_noise() -> void:
 
 
 func _refresh_materials() -> void:
-	_tree_mat = _make_wind_material(tree_texture)
+	_tree_mats.clear()
+	for tex in tree_textures:
+		_tree_mats.append(_make_wind_material(tex))
 	_bush_mat = _make_wind_material(bush_texture)
+
+
+## Numero de variantes de arbol utilizables (escena Y textura presentes).
+func _tree_variant_count() -> int:
+	return maxi(mini(tree_scenes.size(), tree_textures.size()), 1)
 
 
 func _process(delta: float) -> void:
@@ -142,7 +159,7 @@ func _process(delta: float) -> void:
 
 func _config_hash() -> int:
 	return hash([world_size, cell_size, seed, near_radius, grass_radius, prop_density, tree_weight,
-			bush_weight, prop_min_distance, tree_texture, bush_texture, tree_height,
+			bush_weight, prop_min_distance, tree_textures, tree_scenes, bush_texture, tree_height,
 			bush_height, size_variation, patchiness, patch_scale, patch_threshold,
 			grass_enabled, grass_density, grass_height_range, grass_segments,
 			grass_base_color, grass_tip_color, grass_variation_color,
@@ -171,7 +188,8 @@ func _build_editor_preview() -> void:
 			cell.name = "PreviewCell_%d_%d" % [c.x, c.y]
 			cell.position = centre
 			add_child(cell)
-			_add_far_multimesh(cell, props, 0, _tree_mat, tree_height)
+			for v in _tree_mats.size():
+				_add_far_multimesh(cell, props, 0, _tree_mats[v], tree_height, v)
 			_add_far_multimesh(cell, props, 1, _bush_mat, bush_height)
 			if grass_enabled and grass_density > 0.0 and d < minf(grass_radius, r):
 				cell.add_child(_make_grass_area(c))
@@ -263,7 +281,8 @@ func _build_cell_state(c: Vector2i, state: int) -> void:
 	add_child(cell)
 	if lod == 0:
 		for p in props:
-			var inst: Node3D = (tree_scene if p.kind == 0 else bush_scene).instantiate()
+			var variant := mini(int(p.get("v", 0)), tree_scenes.size() - 1)
+			var inst: Node3D = (tree_scenes[variant] if p.kind == 0 else bush_scene).instantiate()
 			# Igualar EXACTAMENTE el quad del LOD lejano (altura, escala y yaw deterministas)
 			# para que la transicion cercano<->lejano no haga pop.
 			inst.set("size_variation", 0.0)
@@ -274,7 +293,8 @@ func _build_cell_state(c: Vector2i, state: int) -> void:
 			inst.scale = Vector3.ONE * p.s
 			inst.rotation.y = p.yaw
 	else:
-		_add_far_multimesh(cell, props, 0, _tree_mat, tree_height)
+		for v in _tree_mats.size():
+			_add_far_multimesh(cell, props, 0, _tree_mats[v], tree_height, v)
 		_add_far_multimesh(cell, props, 1, _bush_mat, bush_height)
 	if with_grass and grass_enabled and grass_density > 0.0:
 		cell.add_child(_make_grass_area(c))
@@ -307,7 +327,8 @@ func _cell_props(c: Vector2i) -> Array:
 		placed.append(p)
 		var kind := 0 if rng.randf() * total_w < tree_weight else 1
 		out.append({"pos": Vector3(p.x, 0.0, p.y), "kind": kind,
-				"s": 1.0 + rng.randf_range(-size_variation, size_variation), "yaw": rng.randf_range(0.0, TAU)})
+				"s": 1.0 + rng.randf_range(-size_variation, size_variation), "yaw": rng.randf_range(0.0, TAU),
+				"v": rng.randi_range(0, _tree_variant_count() - 1)})
 	return out
 
 
@@ -315,8 +336,9 @@ func _cell_seed(c: Vector2i) -> int:
 	return hash([seed, c.x, c.y])
 
 
-func _add_far_multimesh(cell: Node3D, props: Array, kind: int, mat: ShaderMaterial, height: float) -> void:
-	var list := props.filter(func(p) -> bool: return p.kind == kind)
+func _add_far_multimesh(cell: Node3D, props: Array, kind: int, mat: ShaderMaterial, height: float, variant := -1) -> void:
+	var list := props.filter(func(p) -> bool:
+		return p.kind == kind and (variant < 0 or int(p.get("v", 0)) == variant))
 	if list.is_empty():
 		return
 	var mm := MultiMesh.new()

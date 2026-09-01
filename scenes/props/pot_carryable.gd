@@ -9,7 +9,7 @@ signal picked_up(player: Player)
 signal dropped(player: Player)
 
 @export_group("Interaction")
-@export_range(0.5, 6.0, 0.1) var interaction_radius := 1.6
+@export_range(0.5, 6.0, 0.1) var interaction_radius := 1.0
 @export var interact_action: StringName = &"interact"
 @export var prompt_key_text := "E"
 @export var prompt_pick_text := "Coger"
