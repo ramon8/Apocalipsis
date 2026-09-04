@@ -93,6 +93,9 @@ extends Node3D
 @export var editor_preview := true
 ## Radio de la previsualizacion en el editor.
 @export_range(32.0, 512.0, 1.0) var preview_radius := 140.0
+## La previsualizacion sigue a la camara del editor (se regenera al moverla mas de una
+## celda). Apagado = centrada en este nodo.
+@export var preview_follows_camera := true
 
 const WIND_SHADER := preload("res://scenes/props/tree/shaders/wind_cutout_unshaded.gdshader")
 
@@ -147,8 +150,12 @@ func _process(delta: float) -> void:
 		if _preview_timer <= 0.0:
 			_preview_timer = 0.5
 			var h := _config_hash()
+			var centre := _preview_centre()
+			if centre.distance_to(_preview_last_centre) > cell_size:
+				h = hash([h, Vector2i(centre / cell_size)])
 			if h != _preview_hash:
 				_preview_hash = h
+				_preview_last_centre = centre
 				_refresh_noise()
 				_refresh_materials()
 				_build_editor_preview()
@@ -177,6 +184,22 @@ func _config_hash() -> int:
 			path_clearance, paths.version if paths else 0])
 
 
+var _preview_last_centre := Vector2(INF, INF)
+
+
+## Centro de la previsualizacion en coordenadas locales (XZ): la camara del editor o este nodo.
+func _preview_centre() -> Vector2:
+	if preview_follows_camera and Engine.is_editor_hint() and Engine.has_singleton("EditorInterface"):
+		# Por nombre: en un juego exportado la clase EditorInterface no existe.
+		var ei: Object = Engine.get_singleton("EditorInterface")
+		var vp: SubViewport = ei.call("get_editor_viewport_3d", 0)
+		var cam: Camera3D = vp.get_camera_3d() if vp else null
+		if cam:
+			var local := to_local(cam.global_position)
+			return Vector2(local.x, local.z)
+	return Vector2.ZERO
+
+
 func _build_editor_preview() -> void:
 	for c in _cells.keys():
 		_cells[c].node.free()
@@ -186,11 +209,12 @@ func _build_editor_preview() -> void:
 	var max_cells := Vector2i(ceili(world_size.x / cell_size), ceili(world_size.y / cell_size))
 	var r := preview_radius
 	var half := world_size * 0.5
-	for cx in range(maxi(floori((-r + half.x) / cell_size), 0), mini(floori((r + half.x) / cell_size), max_cells.x - 1) + 1):
-		for cz in range(maxi(floori((-r + half.y) / cell_size), 0), mini(floori((r + half.y) / cell_size), max_cells.y - 1) + 1):
+	var pc := _preview_centre()
+	for cx in range(maxi(floori((pc.x - r + half.x) / cell_size), 0), mini(floori((pc.x + r + half.x) / cell_size), max_cells.x - 1) + 1):
+		for cz in range(maxi(floori((pc.y - r + half.y) / cell_size), 0), mini(floori((pc.y + r + half.y) / cell_size), max_cells.y - 1) + 1):
 			var c := Vector2i(cx, cz)
 			var centre := _cell_centre(c)
-			var d := Vector2(centre.x, centre.z).length()
+			var d := (Vector2(centre.x, centre.z) - pc).length()
 			if d > r + cell_size * 0.7:
 				continue
 			var props := _cell_props(c)

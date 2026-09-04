@@ -162,6 +162,8 @@ width_scale = 1.4
 
 [node name="House1" parent="World" unique_id=899507254 instance=ExtResource("25_house1")]
 transform = Transform3D(0.9462405, 0, 0.32346427, 0, 1, 0, -0.32346427, 0, 0.9462405, -10.478218, -0.29228735, -21.072275)
+interior_shape = null
+interior_rect_fit = null
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="World" unique_id=235434014]
 environment = SubResource("Environment_env")
@@ -194,7 +196,7 @@ gust_travel_speed = 4.0
 local_direction_variation_deg = 25.0
 
 [node name="Player" parent="World" unique_id=872944500 instance=ExtResource("2_player")]
-transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, 63.189224, 0, -3.1609097)
+transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, 3.050026, 0, -15.227058)
 walk_speed = 2.0
 run_speed = 3.8
 acceleration = 24.0
@@ -224,6 +226,8 @@ grime_amount = 0.4
 weathering_amount = 0.2
 dirt_amount = 0.9
 interior_scene = ExtResource("15_norte")
+interior_shape = null
+interior_rect_fit = null
 bounds_mesh_name = "Molino"
 
 [node name="Molino2" parent="World" unique_id=1275929520 instance=ExtResource("13_trceg")]
@@ -233,6 +237,8 @@ grime_amount = 0.4
 weathering_amount = 0.45
 dirt_amount = 0.95
 interior_scene = ExtResource("16_sur")
+interior_shape = null
+interior_rect_fit = null
 bounds_mesh_name = "Molino"
 
 [node name="Heno9" type="Node" parent="World" unique_id=1934328431]

@@ -254,6 +254,12 @@ repinta solo al mover puntos en el editor.
   `ScatterWorld` lo usa con `paths` y `path_clearance` para no plantar árboles ni arbustos
   encima. Cualquier dispersión nueva debería hacer lo mismo. `GroundPaths.version` sube en
   cada repintado y sirve como clave de caché.
+- `ScatterClearing` (`scatter_world/scatter_clearing.gd`): `Path3D` cerrado en el grupo
+  `scatter_exclusion`; dentro (y `margin` metros alrededor) no crecen árboles. Es la
+  forma de reservar el solar del pueblo antes de colocar casas.
+- En el editor, la previsualización del bosque sigue a la cámara del editor
+  (`preview_follows_camera`, radio `preview_radius`): se regenera al moverla más de una
+  celda. Antes estaba centrada en el nodo, que está a x = -104, y el pueblo quedaba fuera.
 - El ruido de la hierba y del borde del camino es de gradiente con dominio deformado
   (`organic()` en el shader). No uses `vnoise` (ruido de valor) para umbralizar parches:
   deja bordes rectos alineados a los ejes.
