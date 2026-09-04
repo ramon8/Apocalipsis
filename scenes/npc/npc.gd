@@ -145,9 +145,8 @@ signal dialogue_finished
 var _model: Node3D
 var _anim: AnimationPlayer
 var _head_look: HeadLookModifier
-var _prompt: InteractPrompt
+var _zone: InteractionZone
 var _bubble: SpeechBubble
-var _player_in_range: Player
 var _talking_to: Player
 var _line := -1
 var _campfire: Campfire
@@ -173,7 +172,6 @@ func _ready() -> void:
 		return  # en el editor solo se previsualiza el modelo
 	_build_area()
 	_build_ui()
-	InteractionManager.changed.connect(_update_prompt)
 	_connect_campfire.call_deferred()
 	_connect_pot.call_deferred()
 	if dog_stays_after_leaving_room != &"":
@@ -396,19 +394,15 @@ func _prepare_materials(node: Node) -> void:
 
 
 func _build_area() -> void:
-	var area := Area3D.new()
-	area.name = "TalkArea"
-	area.collision_layer = 0
-	area.collision_mask = 2
-	var shape := CollisionShape3D.new()
-	var sphere := SphereShape3D.new()
-	sphere.radius = interaction_radius
-	shape.shape = sphere
-	shape.position.y = 0.8
-	area.add_child(shape)
-	area.body_entered.connect(_on_body_entered)
-	area.body_exited.connect(_on_body_exited)
-	add_child(area)
+	_zone = InteractionZone.new()
+	_zone.name = "TalkZone"
+	_zone.radius = interaction_radius
+	_zone.height = 0.8
+	_zone.interact_priority = 2
+	_zone.key_text = "E"
+	_zone.action_text = prompt_text
+	_zone.player_exited.connect(_on_player_exited)
+	add_child(_zone)
 	# Cuerpo fisico basico para que no se le atraviese.
 	var body_shape := CollisionShape3D.new()
 	var capsule := CapsuleShape3D.new()
@@ -420,10 +414,6 @@ func _build_area() -> void:
 
 
 func _build_ui() -> void:
-	_prompt = InteractPrompt.new()
-	_prompt.name = "TalkPrompt"
-	_prompt.key_text = "E"
-	_prompt.action_text = prompt_text
 	_bubble = SpeechBubble.new()
 	_bubble.name = "SpeechBubble"
 	_bubble.chars_per_second = chars_per_second
@@ -439,14 +429,13 @@ func _build_ui() -> void:
 	if host == null:
 		host = CanvasLayer.new()
 		add_child(host)
-	host.add_child(_prompt)
 	host.add_child(_bubble)
 	host.add_child(_marker)
 
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE and not Engine.is_editor_hint():
-		for n in [_prompt, _bubble, _marker]:
+		for n in [_bubble, _marker]:
 			if is_instance_valid(n) and not is_ancestor_of(n):
 				n.queue_free()
 
@@ -456,7 +445,7 @@ func _process(delta: float) -> void:
 		return
 	# Seguir al jugador SOLO con la cabeza mientras esta cerca o hablando; el cuerpo
 	# se queda como esta (de pie o sentado).
-	var who: Player = _talking_to if _talking_to else _player_in_range
+	var who: Player = _talking_to if _talking_to else _zone.player_in_range
 	if _head_look:
 		_head_look.looking = who != null
 		if who:
@@ -484,41 +473,25 @@ func _process(delta: float) -> void:
 
 # ------------------------------------------------------------------ interaccion
 
-func _on_body_entered(body: Node3D) -> void:
-	if body is Player:
-		_player_in_range = body as Player
-		InteractionManager.enter(self, 2)
-
-
-func _on_body_exited(body: Node3D) -> void:
-	if body == _player_in_range:
-		_player_in_range = null
-		InteractionManager.leave(self)
-		if is_talking():
-			_end_dialogue()
+func _on_player_exited(_player: Player) -> void:
+	if is_talking():
+		_end_dialogue()
 
 
 func is_talking() -> bool:
 	return _talking_to != null
 
 
-func _update_prompt() -> void:
-	if _player_in_range and not is_talking() and InteractionManager.is_current(self) \
-			and not _player_in_range.is_carrying() and _player_can_see_me():
-		_prompt.show_at()
-	elif _prompt.visible:
-		_prompt.pop_out()
+# La E llega por la InteractionZone; durante el dialogo la zona tiene la E capturada.
+func can_interact(_player: Player) -> bool:
+	return not is_talking() and _player_can_see_me()
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	if Engine.is_editor_hint() or not event.is_action_pressed(&"interact"):
-		return
+func interact_with(player: Player) -> void:
 	if is_talking():
-		get_viewport().set_input_as_handled()
 		_advance()
-	elif _player_in_range and InteractionManager.is_current(self) and not _player_in_range.is_carrying():
-		get_viewport().set_input_as_handled()
-		_start_dialogue(_player_in_range, current_lines())
+	else:
+		_start_dialogue(player, current_lines())
 
 
 ## Lineas que toca decir ahora mismo (segun el estado del mundo).
@@ -541,11 +514,12 @@ func _start_dialogue(player: Player, what: Array[String], auto := false, shout_f
 	_auto_timer = 0.0
 	_shout_first = shout_first
 	_line = -1
-	_prompt.pop_out()
+	_zone.hide_prompt()
 	if not auto:
 		_has_new = false  # el jugador ha venido a oirlo
 	if is_instance_valid(player):
 		player.lock(_lock_reason)  # mientras te hablan no te mueves
+		InteractionManager.capture(_zone, player)  # E = avanzar el dialogo
 	dialogue_started.emit()
 	_advance()
 
@@ -574,6 +548,7 @@ func _end_dialogue() -> void:
 	_talking_to = null
 	_line = -1
 	_auto = false
+	InteractionManager.release(_zone)
 	_bubble.close()
 	dialogue_finished.emit()
-	_update_prompt()
+	_zone.refresh_prompt()

@@ -57,8 +57,7 @@ var _blades: Node3D
 var _weather_mats: Array[ShaderMaterial] = []
 var _room: Room
 var _radius := 2.0
-var _door_prompt: InteractPrompt
-var _player_in_door: Player
+var _door: InteractionZone
 var _player_inside: Player
 var _exit_hold := false  # despedida en curso: la salida espera
 
@@ -131,74 +130,36 @@ func _build_interior() -> void:
 	_room.occupant_exited.connect(_on_room_occupant_changed)
 
 	var door_rad := deg_to_rad(door_angle_deg)
-	# Area de la puerta (dentro Y fuera): prompt Entrar/Salir.
-	var door_area := Area3D.new()
-	door_area.name = "DoorArea"
-	door_area.collision_layer = 0
-	door_area.collision_mask = 2
-	var door_shape := CollisionShape3D.new()
-	var sphere := SphereShape3D.new()
-	sphere.radius = 1.7
-	door_shape.shape = sphere
-	door_shape.position = Vector3(sin(door_rad), 0.5, cos(door_rad)) * _radius
-	door_area.add_child(door_shape)
-	door_area.body_entered.connect(_on_door_body_entered)
-	door_area.body_exited.connect(_on_door_body_exited)
-	add_child(door_area)  # en el Molino, no en la habitacion: activo tambien estando fuera
-
-	_door_prompt = InteractPrompt.new()
-	_door_prompt.name = "DoorPrompt"
-	_door_prompt.key_text = "E"
-	var renderer := get_node_or_null("/root/RetroRenderer")
-	if renderer and renderer.get("hud_layer") != null:
-		renderer.hud_layer.add_child(_door_prompt)
-	else:
-		var layer := CanvasLayer.new()
-		layer.add_child(_door_prompt)
-		add_child(layer)
-	InteractionManager.changed.connect(_update_door_prompt)
-
-
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_PREDELETE and is_instance_valid(_door_prompt) and not is_ancestor_of(_door_prompt):
-		_door_prompt.queue_free()
-
-
-func _on_door_body_entered(body: Node3D) -> void:
-	if body is Player:
-		_player_in_door = body as Player
-		InteractionManager.enter(self, 2)
-
-
-func _on_door_body_exited(body: Node3D) -> void:
-	if body == _player_in_door:
-		_player_in_door = null
-		InteractionManager.leave(self)
+	# Zona de la puerta (dentro Y fuera): prompt Entrar/Salir. Cuelga del Molino, no de
+	# la habitacion, para estar activa tambien estando fuera.
+	_door = InteractionZone.new()
+	_door.name = "DoorZone"
+	_door.radius = 1.7
+	_door.height = 0.0
+	_door.interact_priority = 2
+	_door.position = Vector3(sin(door_rad), 0.5, cos(door_rad)) * _radius
+	add_child(_door)
 
 
 func _is_player_inside() -> bool:
 	return _room != null and is_instance_valid(_player_inside) and _room.has_occupant(_player_inside)
 
 
-func _update_door_prompt() -> void:
-	if _player_in_door and InteractionManager.is_current(self) and not _player_in_door.is_carrying():
-		_door_prompt.action_text = prompt_exit_text if _is_player_inside() else prompt_enter_text
-		_door_prompt.show_at()
-	elif _door_prompt.visible:
-		_door_prompt.pop_out()
+# ------------------------------------------------------------------ InteractionZone
+
+func can_interact(_player: Player) -> bool:
+	return not _exit_hold
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	if _exit_hold:
-		return  # la E es para pasar el dialogo de despedida
-	if _player_in_door == null or not event.is_action_pressed(&"interact") \
-			or not InteractionManager.is_current(self) or _player_in_door.is_carrying():
-		return
-	get_viewport().set_input_as_handled()
+func interaction_prompt(_player: Player) -> String:
+	return prompt_exit_text if _is_player_inside() else prompt_enter_text
+
+
+func interact_with(player: Player) -> void:
 	if _is_player_inside():
 		_exit_interior()
 	else:
-		_enter_interior(_player_in_door)
+		_enter_interior(player)
 
 
 ## La habitacion gestiona la vista (void, capas) y sus paredes; el edificio solo abre
@@ -232,7 +193,7 @@ func _finish_exit() -> void:
 
 func _on_room_occupant_changed(_body: Node3D) -> void:
 	_set_tower_collision(_room.occupants.is_empty())
-	_update_door_prompt()
+	_door.refresh_prompt()
 
 
 func _set_tower_collision(active: bool) -> void:

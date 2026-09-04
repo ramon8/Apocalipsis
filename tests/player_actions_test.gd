@@ -1,20 +1,20 @@
-extends SceneTree
+extends Node
 ## Test headless de la maquina de estados del jugador. Ejecutar:
-##   godot --headless --path . -s tests/player_actions_test.gd
+##   godot --headless --path . tests/player_actions_test.tscn
 
 var _events: Array[String] = []
 var _failures := 0
 
 
-func _initialize() -> void:
+func _ready() -> void:
 	_run()
 
 
 func _run() -> void:
 	var player: Player = load("res://scenes/player/player.tscn").instantiate()
-	root.add_child(player)
-	await physics_frame
-	await physics_frame
+	add_child(player)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
 	player.action_started.connect(func(k): _events.append("started:%s" % k))
 	player.action_apex.connect(func(k): _events.append("apex:%s" % k))
 	player.action_finished.connect(func(k): _events.append("finished:%s" % k))
@@ -89,13 +89,13 @@ func _run() -> void:
 	_check(player.state == Player.State.LOCOMOTION, "stand_up vuelve a LOCOMOTION")
 
 	print("\n%s: %d fallos" % ["OK" if _failures == 0 else "FAIL", _failures])
-	quit(1 if _failures > 0 else 0)
+	get_tree().quit(1 if _failures > 0 else 0)
 
 
 func _wait_until(cond: Callable, timeout: float) -> void:
 	var t := 0.0
 	while not cond.call() and t < timeout:
-		await physics_frame
+		await get_tree().physics_frame
 		t += 1.0 / 60.0
 	if t >= timeout:
 		_fail("timeout esperando condicion")

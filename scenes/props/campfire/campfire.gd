@@ -113,7 +113,6 @@ signal pot_changed(has_pot: bool)
 ## Acercarse muestra el prompt (E): "Encender" si esta apagada, "Apagar" si esta encendida.
 @export var interaction_enabled := true
 @export_range(0.5, 6.0, 0.1) var interaction_radius := 1.6
-@export var interact_action: StringName = &"interact"
 @export var prompt_key_text := "E"
 @export var prompt_light_text := "Encender"
 @export var prompt_extinguish_text := "Apagar"
@@ -168,8 +167,7 @@ var _fire_mat: ShaderMaterial
 var _smoke: GPUParticles3D
 var _light: OmniLight3D
 var _audio: AudioStreamPlayer3D
-var _prompt: InteractPrompt
-var _player_in_range: Player
+var _zone: InteractionZone
 var _wheel: FirestarterWheel
 var _flint_player: AudioStreamPlayer
 var _minigame_active := false
@@ -293,33 +291,22 @@ func _rebuild() -> void:
 
 
 func _build_interaction() -> void:
-	var area := Area3D.new()
-	area.name = "InteractArea"
-	area.collision_layer = 0
-	area.collision_mask = 2  # capa del jugador
-	var shape := CollisionShape3D.new()
-	var sphere := SphereShape3D.new()
-	sphere.radius = interaction_radius
-	shape.shape = sphere
-	shape.position.y = 0.5
-	area.add_child(shape)
-	area.body_entered.connect(_on_body_entered)
-	area.body_exited.connect(_on_body_exited)
-	add_child(area)
-	InteractionManager.changed.connect(_update_prompt)
+	_zone = InteractionZone.new()
+	_zone.name = "InteractionZone"
+	_zone.radius = interaction_radius
+	_zone.height = 0.5
+	_zone.interact_priority = 2
+	_zone.key_text = prompt_key_text
+	_zone.player_exited.connect(_on_player_exited)
+	add_child(_zone)
 
-	_prompt = InteractPrompt.new()
-	_prompt.name = "Prompt"
-	_prompt.key_text = prompt_key_text
 	_wheel = FirestarterWheel.new()
 	_wheel.name = "FirestarterWheel"
 	var renderer := get_node_or_null("/root/RetroRenderer")
 	if renderer and renderer.get("hud_layer") != null:
-		renderer.hud_layer.add_child(_prompt)
 		renderer.hud_layer.add_child(_wheel)
 	else:
 		var layer := CanvasLayer.new()
-		layer.add_child(_prompt)
 		layer.add_child(_wheel)
 		add_child(layer)
 
@@ -338,72 +325,53 @@ func _build_interaction() -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_PREDELETE:
-		for n in [_prompt, _wheel]:
-			if is_instance_valid(n) and not is_ancestor_of(n):
-				n.queue_free()
+	if what == NOTIFICATION_PREDELETE and is_instance_valid(_wheel) and not is_ancestor_of(_wheel):
+		_wheel.queue_free()
 
 
-func _on_body_entered(body: Node3D) -> void:
-	if not (body is Player):
-		return
-	_player_in_range = body as Player
-	InteractionManager.enter(self, 2)
+## El jugador esta dentro de la zona de interaccion (lo usa el pot para "poner al fuego").
+func is_player_in_range(player: Player) -> bool:
+	return _zone != null and _zone.player_in_range == player
 
 
-func _on_body_exited(body: Node3D) -> void:
-	if body == _player_in_range:
-		_player_in_range = null
-		InteractionManager.leave(self)
-		_prompt.pop_out()
-		if _minigame_active:
-			_cancel_minigame()
+func _on_player_exited(_player: Player) -> void:
+	if _minigame_active:
+		_cancel_minigame()
 
 
-func _show_prompt() -> void:
-	_update_prompt()
+# ------------------------------------------------------------------ InteractionZone
+
+func can_interact(_player: Player) -> bool:
+	return not _minigame_active
 
 
-func _update_prompt() -> void:
-	if _player_in_range and not _minigame_active and not _player_in_range.is_carrying() \
-			and InteractionManager.is_current(self):
-		_prompt.action_text = prompt_extinguish_text if lit else prompt_light_text
-		_prompt.show_at()
-	elif _prompt.visible:
-		_prompt.pop_out()
+func interaction_prompt(_player: Player) -> String:
+	return prompt_extinguish_text if lit else prompt_light_text
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	if Engine.is_editor_hint() or _player_in_range == null:
-		return
-	if not event.is_action_pressed(interact_action):
-		return
-	if _player_in_range.is_carrying() and not _minigame_active:
-		return  # manos ocupadas: el objeto llevado gestiona la E
-	if not _minigame_active and not InteractionManager.is_current(self):
-		return
-	get_viewport().set_input_as_handled()
+## E: durante el minijuego (E capturada) es el golpe; si no, enciende (minijuego) o apaga.
+func interact_with(player: Player) -> void:
 	if _minigame_active:
 		_minigame_press()
 	elif not lit and minigame_enabled:
-		_start_minigame()
+		_start_minigame(player)
 	else:
 		toggle()
-		_show_prompt()
+		_zone.refresh_prompt()
 
 
 # ------------------------------------------------------------------ minijuego
 
-func _start_minigame() -> void:
+func _start_minigame(player: Player) -> void:
 	_minigame_active = true
 	_hits = 0
 	_hits_needed = hits_to_light
 	_target_frac = target_size_deg / 360.0
-	_lighting_player = _player_in_range
-	if _lighting_player:
-		_lighting_player.start_action(light_action)
+	_lighting_player = player
+	_lighting_player.start_action(light_action)
+	InteractionManager.capture(_zone, player)
 	_new_round()
-	_prompt.pop_out()
+	_zone.hide_prompt()
 	_wheel.show_wheel()
 	_play_flint()
 
@@ -456,14 +424,14 @@ func _finish_minigame() -> void:
 	_wheel.pop_out()
 	_release_lighting_player()
 	lit = true
-	if _player_in_range:
-		_show_prompt()
+	_zone.refresh_prompt()
 
 
 func _cancel_minigame() -> void:
 	_minigame_active = false
 	_wheel.pop_out()
 	_release_lighting_player()
+	_zone.refresh_prompt()
 
 
 ## Un pot (u otro cacharro) se apoya sobre el fuego: llama dispersa y sin humo.
@@ -486,6 +454,7 @@ func has_pot() -> bool:
 
 
 func _release_lighting_player() -> void:
+	InteractionManager.release(_zone)
 	if is_instance_valid(_lighting_player):
 		_lighting_player.stop_action()
 	_lighting_player = null

@@ -3,14 +3,16 @@ extends StaticBody3D
 ## Objeto que se puede coger y llevar en las manos (pose hold) y soltar en el suelo.
 ## Coger: E -> crouch_start; al terminar, el objeto pasa al CarrySlot del jugador y
 ## crouch_end devuelve el control. Soltar: E de nuevo -> misma secuencia, y al terminar
-## crouch_start el objeto queda en el suelo delante del jugador.
+## crouch_start el objeto queda en el suelo delante del jugador (o sobre una hoguera
+## encendida si el portador esta en su zona).
+## La E y el prompt los gestiona la InteractionZone hija; mientras se lleva, la zona
+## queda "en mano" (prioridad -1) para que la E siga llegando aqui.
 
 signal picked_up(player: Player)
 signal dropped(player: Player)
 
 @export_group("Interaction")
 @export_range(0.5, 6.0, 0.1) var interaction_radius := 1.0
-@export var interact_action: StringName = &"interact"
 @export var prompt_key_text := "E"
 @export var prompt_pick_text := "Coger"
 @export var prompt_drop_text := "Soltar"
@@ -30,9 +32,7 @@ signal dropped(player: Player)
 @export_range(1.0, 2.0, 0.01) var lift_random_pitch := 1.15
 @export_range(0.0, 12.0, 0.5) var lift_random_volume_db := 3.0
 
-var _prompt: InteractPrompt
-var _area: Area3D
-var _player_in_range: Player
+var _zone: InteractionZone
 var _carrier: Player
 var _busy := false  # secuencia de coger/soltar en curso
 var _resting_fire: Node3D  # hoguera sobre la que descansa, si alguna
@@ -40,20 +40,14 @@ var _lift_player: AudioStreamPlayer3D
 
 
 func _ready() -> void:
-	_area = Area3D.new()
-	_area.name = "InteractArea"
-	_area.collision_layer = 0
-	_area.collision_mask = 2
-	var shape := CollisionShape3D.new()
-	var sphere := SphereShape3D.new()
-	sphere.radius = interaction_radius
-	shape.shape = sphere
-	shape.position.y = 0.5
-	_area.add_child(shape)
-	_area.body_entered.connect(_on_body_entered)
-	_area.body_exited.connect(_on_body_exited)
-	add_child(_area)
-	InteractionManager.changed.connect(_update_prompt)
+	_zone = InteractionZone.new()
+	_zone.name = "InteractionZone"
+	_zone.radius = interaction_radius
+	_zone.height = 0.5
+	_zone.interact_priority = 1
+	_zone.key_text = prompt_key_text
+	_zone.blocked_while_carrying = false  # lo comprobamos aqui: llevado, la E es nuestra
+	add_child(_zone)
 
 	if lift_stream:
 		var randomizer := AudioStreamRandomizer.new()
@@ -67,70 +61,33 @@ func _ready() -> void:
 		_lift_player.pitch_scale = lift_pitch
 		add_child(_lift_player)
 
-	_prompt = InteractPrompt.new()
-	_prompt.name = "Prompt"
-	_prompt.key_text = prompt_key_text
-	var renderer := get_node_or_null("/root/RetroRenderer")
-	if renderer and renderer.get("hud_layer") != null:
-		renderer.hud_layer.add_child(_prompt)
-	else:
-		var layer := CanvasLayer.new()
-		layer.add_child(_prompt)
-		add_child(layer)
-
-
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_PREDELETE and is_instance_valid(_prompt) and not is_ancestor_of(_prompt):
-		_prompt.queue_free()
-
 
 func is_carried() -> bool:
 	return _carrier != null
 
 
-func _on_body_entered(body: Node3D) -> void:
-	if is_carried() or not (body is Player):
-		return
-	_player_in_range = body as Player
-	InteractionManager.enter(self, 1)
+# ------------------------------------------------------------------ InteractionZone
+
+func can_interact(player: Player) -> bool:
+	if _busy or player.is_action_playing():
+		return false
+	return is_carried() or not player.is_carrying()
 
 
-func _on_body_exited(body: Node3D) -> void:
-	if body == _player_in_range:
-		_player_in_range = null
-		if not is_carried():
-			InteractionManager.leave(self)
+func interaction_prompt(_player: Player) -> String:
+	if not is_carried():
+		return prompt_pick_text
+	return prompt_place_text if _find_lit_campfire() else prompt_drop_text
 
 
-func _update_prompt() -> void:
-	if not InteractionManager.is_current(self):
-		if _prompt.visible:
-			_prompt.pop_out()
-		return
-	if _busy:
-		return
+func interact_with(player: Player) -> void:
 	if is_carried():
-		_prompt.action_text = prompt_place_text if _find_lit_campfire() else prompt_drop_text
-		_prompt.show_at()
-	elif _player_in_range and not _player_in_range.is_carrying():
-		_prompt.action_text = prompt_pick_text
-		_prompt.show_at()
-	elif _prompt.visible:
-		_prompt.pop_out()
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	if _busy or not event.is_action_pressed(interact_action) or not InteractionManager.is_current(self):
-		return
-	if is_carried():
-		if _carrier.is_action_playing():
-			return
-		get_viewport().set_input_as_handled()
 		_begin_drop()
-	elif _player_in_range and not _player_in_range.is_action_playing() and not _player_in_range.is_carrying():
-		get_viewport().set_input_as_handled()
-		_begin_pickup(_player_in_range)
+	else:
+		_begin_pickup(player)
 
+
+# ------------------------------------------------------------------ coger / soltar
 
 func _begin_pickup(player: Player) -> void:
 	if not player.start_action(grab_action):
@@ -138,14 +95,12 @@ func _begin_pickup(player: Player) -> void:
 	if _lift_player:
 		_lift_player.play()
 	_busy = true
-	InteractionManager.leave(self)
-	_prompt.pop_out()
+	_zone.release()  # durante la animacion, otras zonas pueden tomar la E
 	player.action_apex.connect(_on_pickup_apex.bind(player), CONNECT_ONE_SHOT)
 
 
 func _on_pickup_apex(_kind: StringName, player: Player) -> void:
 	_carrier = player
-	InteractionManager.enter(self, -1)  # llevado: siempre es el interactuable actual
 	if is_instance_valid(_resting_fire):
 		_resting_fire.remove_pot()
 		_resting_fire = null
@@ -156,8 +111,7 @@ func _on_pickup_apex(_kind: StringName, player: Player) -> void:
 	player.holding = true
 	player.action_finished.connect(_on_sequence_done, CONNECT_ONE_SHOT)
 	picked_up.emit(player)
-	_prompt.action_text = prompt_drop_text
-	_prompt.show_at()
+	_zone.hold(player)  # llevado: siempre es el interactuable actual
 
 
 func _begin_drop() -> void:
@@ -167,14 +121,14 @@ func _begin_drop() -> void:
 	if _lift_player:
 		_lift_player.play()
 	_busy = true
-	_prompt.pop_out()
+	_zone.hide_prompt()
 	player.action_apex.connect(_on_drop_apex.bind(player), CONNECT_ONE_SHOT)
 
 
 func _on_drop_apex(_kind: StringName, player: Player) -> void:
 	var fire := _find_lit_campfire()  # antes de soltar _carrier: la busqueda lo usa
 	_carrier = null
-	InteractionManager.leave(self)
+	_zone.release()
 	player.holding = false
 	var world := player.get_parent()
 	reparent(world, false)
@@ -192,21 +146,21 @@ func _on_drop_apex(_kind: StringName, player: Player) -> void:
 	dropped.emit(player)
 
 
-## Hoguera encendida cuyo area de interaccion contiene al portador.
+## Hoguera encendida cuya zona de interaccion contiene al portador.
 func _find_lit_campfire() -> Node3D:
 	if _carrier == null:
 		return null
 	for fire in get_tree().get_nodes_in_group("campfire"):
-		if fire.lit and fire._player_in_range == _carrier and not fire.has_pot():
+		if fire.lit and fire.is_player_in_range(_carrier) and not fire.has_pot():
 			return fire
 	return null
 
 
 func _on_sequence_done(_kind: StringName) -> void:
 	_busy = false
-	_update_prompt()
+	_zone.refresh_prompt()
 
 
 func _set_physics_active(active: bool) -> void:
 	collision_layer = 1 if active else 0
-	_area.monitoring = active
+	_zone.set_deferred("monitoring", active)

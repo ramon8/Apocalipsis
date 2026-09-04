@@ -3,7 +3,7 @@ class_name BackpackPickup
 extends Node3D
 ## World pickup for the backpack: a RigidBody3D that drops to the ground and rests there
 ## (random tilt/yaw so it looks thrown). Uses the "Backpack" mesh from the character GLB.
-## When the player is in range a prompt shows; pressing `interact_action` grabs it.
+## When the player is in range a prompt shows; pressing E (InteractionZone) grabs it.
 
 signal picked_up(player: Player)
 
@@ -29,8 +29,6 @@ signal picked_up(player: Player)
 @export_group("Pickup")
 ## Range at which the prompt appears and E works.
 @export var pickup_radius := 1.4
-## Input action that grabs the item while in range.
-@export var interact_action: StringName = &"interact"
 @export var prompt_key_text := "E"
 ## Action label shown next to the key in the corner prompt.
 @export var prompt_action_text := "Pick up"
@@ -45,8 +43,7 @@ signal picked_up(player: Player)
 
 var _body: RigidBody3D
 var _taken := false
-var _player_in_range: Player
-var _prompt: InteractPrompt
+var _zone: InteractionZone
 
 
 func _ready() -> void:
@@ -54,18 +51,7 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		set_process(false)
 		return
-	_build_area()
-	_build_prompt()
-	InteractionManager.changed.connect(_update_prompt)
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	if _taken or _player_in_range == null or _player_in_range.is_carrying() \
-			or not InteractionManager.is_current(self):
-		return
-	if event.is_action_pressed(interact_action):
-		get_viewport().set_input_as_handled()
-		_grab(_player_in_range)
+	_build_zone()
 
 
 ## RigidBody3D -> Mesh (centred, scaled) + BoxShape from the mesh AABB.
@@ -116,73 +102,32 @@ func _build_body() -> void:
 	add_child(_body)
 
 
-func _build_area() -> void:
-	var area := Area3D.new()
-	area.name = "PickupArea"
-	area.collision_layer = 0
-	area.collision_mask = 2  # player layer
-	var shape := CollisionShape3D.new()
-	var sphere := SphereShape3D.new()
-	sphere.radius = pickup_radius
-	shape.shape = sphere
-	area.add_child(shape)
-	area.body_entered.connect(_on_body_entered)
-	area.body_exited.connect(_on_body_exited)
-	_body.add_child(area)  # follows the backpack wherever it lands
+## Zona de interaccion colgada del cuerpo rigido: sigue a la mochila donde caiga.
+func _build_zone() -> void:
+	_zone = InteractionZone.new()
+	_zone.name = "InteractionZone"
+	_zone.target = self
+	_zone.radius = pickup_radius
+	_zone.height = 0.0
+	_zone.interact_priority = 0
+	_zone.key_text = prompt_key_text
+	_zone.action_text = prompt_action_text
+	_body.add_child(_zone)
 
 
-func _build_prompt() -> void:
-	_prompt = InteractPrompt.new()
-	_prompt.name = "Prompt"
-	_prompt.key_text = prompt_key_text
-	_prompt.action_text = prompt_action_text
-	# HUD above the retro post pass (vignette/dither would eat a corner prompt); falls back
-	# to a local CanvasLayer if the RetroRenderer autoload isn't there.
-	var renderer := get_node_or_null("/root/RetroRenderer")
-	if renderer and renderer.get("hud_layer") != null:
-		renderer.hud_layer.add_child(_prompt)
-	else:
-		var layer := CanvasLayer.new()
-		layer.name = "PromptLayer"
-		layer.add_child(_prompt)
-		add_child(layer)
+func can_interact(_player: Player) -> bool:
+	return not _taken
 
 
-func _notification(what: int) -> void:
-	# The prompt may live in the HUD layer, outside this subtree: free it when WE are freed
-	# (not on _exit_tree, which also fires when RetroRenderer reparents the scene).
-	if what == NOTIFICATION_PREDELETE and is_instance_valid(_prompt) and not is_ancestor_of(_prompt):
-		_prompt.queue_free()
-
-
-func _on_body_entered(body: Node3D) -> void:
-	if _taken or not (body is Player):
-		return
-	_player_in_range = body as Player
-	InteractionManager.enter(self, 0)
-
-
-func _on_body_exited(body: Node3D) -> void:
-	if body == _player_in_range:
-		_player_in_range = null
-		InteractionManager.leave(self)
-
-
-func _update_prompt() -> void:
-	if _player_in_range and not _taken and not _player_in_range.is_carrying() \
-			and InteractionManager.is_current(self):
-		_prompt.show_at(_body.global_position)
-	elif _prompt.visible:
-		_prompt.pop_out()
+func interact_with(player: Player) -> void:
+	_grab(player)
 
 
 func _grab(player: Player) -> void:
 	if _taken:
 		return
 	_taken = true
-	_player_in_range = null
-	InteractionManager.leave(self)
-	_prompt.pop_out()
+	_zone.enabled = false
 	# Play the character's pickup animation; the bag vanishes when the hand reaches it.
 	if player.start_action(pickup_action):
 		player.action_apex.connect(_on_reached.bind(player), CONNECT_ONE_SHOT)
