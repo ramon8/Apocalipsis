@@ -17,6 +17,9 @@ uniform float ring_density : hint_range(2.0, 40.0, 0.5) = 14.0;
 uniform float bark_amount : hint_range(0.0, 1.0, 0.05) = 1.0;
 // Ondulacion de la veta / anillos.
 uniform float wobble : hint_range(0.0, 1.0, 0.05) = 0.35;
+// Madera serrada (tablones, cajas): veta plana a lo largo del eje X local en todas las
+// caras, sin corteza ni anillos. Para cilindros/troncos dejarlo en false.
+uniform bool flat_grain = false;
 
 group_uniforms Retro;
 uniform bool palette_snap = true;
@@ -71,7 +74,17 @@ void fragment() {
 	float r = length(p.xz);
 	float ang = atan(p.z, p.x);
 	vec3 col;
-	if (abs(v_normal.y) > 0.7) {
+	if (flat_grain) {
+		// Veta a lo largo de X; la coordenada transversal depende de la cara.
+		float across = abs(v_normal.y) > 0.7 ? p.z : (abs(v_normal.x) > 0.7 ? p.z : p.y);
+		float along = abs(v_normal.x) > 0.7 ? p.y : p.x;
+		vec2 g = vec2(across * grain_density, along * grain_density * 0.2);
+		float grain = vnoise(g + wobble * 2.0 * vnoise(g * 0.3 + 9.0));
+		col = mix(wood_light, wood_dark, smoothstep(0.4, 0.75, grain));
+		// Nudos ocasionales.
+		float knot = vnoise(vec2(along * 1.5, across * 6.0) + 21.0);
+		col = mix(col, wood_dark * 0.8, smoothstep(0.86, 0.95, knot));
+	} else if (abs(v_normal.y) > 0.7) {
 		// Tapa: anillos concentricos con ondulacion.
 		float rr = r + wobble * 0.04 * vnoise(vec2(ang * 3.0, r * 6.0) + 5.0);
 		float ring = fract(rr * ring_density);

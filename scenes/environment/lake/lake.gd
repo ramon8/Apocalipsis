@@ -320,6 +320,12 @@ func _build_collision(pts: PackedVector2Array) -> void:
 	var inner: Array[PackedVector2Array] = Geometry2D.offset_polygon(pts, -shallow_width, Geometry2D.JOIN_ROUND)
 	if inner.is_empty():
 		return
+	# Pasos sobre el agua (embarcaderos, grupo "water_passage"): sin caja de orilla debajo.
+	var passages: Array[Node] = []
+	if not Engine.is_editor_hint() and is_inside_tree():
+		for n in get_tree().get_nodes_in_group("water_passage"):
+			if n.has_method("clearance_at"):
+				passages.append(n)
 	_body = StaticBody3D.new()
 	_body.name = "ShoreCollision"
 	_body.collision_layer = 1
@@ -332,11 +338,19 @@ func _build_collision(pts: PackedVector2Array) -> void:
 			var len := along.length()
 			if len < 0.05:
 				continue
+			var mid := (a + b) * 0.5
+			var mid_world := mid + Vector2(global_position.x, global_position.z)
+			var blocked := false
+			for pnode in passages:
+				if pnode.clearance_at(mid_world) < 0.0:
+					blocked = true
+					break
+			if blocked:
+				continue
 			var shape := CollisionShape3D.new()
 			var box := BoxShape3D.new()
 			box.size = Vector3(0.3, 2.0, len)
 			shape.shape = box
-			var mid := (a + b) * 0.5
 			shape.position = Vector3(mid.x, water_level + 0.5, mid.y)
 			shape.rotation.y = atan2(along.x, along.y)
 			_body.add_child(shape)

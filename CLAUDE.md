@@ -268,7 +268,10 @@ entre poste y poste, y colisión por tramo. `curve.closed = true` para un corral
 travesaños son un `MultiMesh` cada uno con el shader de madera del banco, que ahora acepta
 una semilla por instancia en `INSTANCE_CUSTOM.x`. Para escalar instancias de un
 `MultiMesh` a lo largo de su eje usa `basis * Basis.from_scale(...)`: `Basis.scaled()`
-escala en ejes globales y estira en la dirección equivocada.
+escala en ejes globales y estira en la dirección equivocada. Y al montar un `Basis(x, y, z)`
+a mano, comprueba que sea dextrógiro (`x × y == z`): con `side = fwd × up` sale especular,
+las normales se invierten y la cara superior queda sin luz (pasó con los tablones del
+embarcadero). Usa `side = up × fwd`.
 
 **Puertas.** `FenceGate` (`fence_gate.gd`) es un `Node3D` hijo de la valla: arrástralo cerca
 de la curva y la valla lo pega al punto más cercano, corta el hueco de `width` y pone un
@@ -317,6 +320,15 @@ el shader lee el canal R (`wake_tex`) para aclarar el agua y poner espuma que se
 motas. No se intentó acumular en la GPU con `CLEAR_MODE_NEVER`: en Forward+ el
 `SubViewport` no conserva el contenido entre frames. Para que otro personaje vadee, dale un `Wading` y
 llama a `setup()` + `tick()` como hace el jugador.
+
+**Embarcadero.** `Dock` (`scenes/props/dock/dock.gd`, escena `dock.tscn`) es un `Path3D`:
+dibuja la línea desde tierra hacia el agua. Genera tablones transversales (`MultiMesh`,
+madera serrada con `flat_grain` del shader de madera), dos vigas y pilotes a cada lado
+hasta `pile_depth` bajo el nodo, una rampa de `ramp_length` en el primer punto para subir
+desde el suelo, y cajas de colisión transitables (inclinadas en la rampa). Está en los
+grupos `water_passage` (el lago no pone colisión de orilla bajo él) y `scatter_exclusion`.
+`Wading` ignora el agua si el cuerpo está más de 0.15 m por encima de la superficie, así
+sobre el tablero no se hunde ni frena.
 
 **Nodos que se recolocan solos.** No uses `set_notify_transform` en un hijo que su padre
 recoloca al cargar (`FenceGate` lo hacía): el motor lanza `Condition "p_elem->_root !=

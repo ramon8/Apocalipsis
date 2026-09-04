@@ -67,6 +67,9 @@ func tick(delta: float) -> void:
 	_speed_factor = 1.0
 	_current_lake = null
 	for lake in _lakes:
+		# Sobre un embarcadero (o cualquier cosa por encima de la superficie): seco.
+		if _body.global_position.y > lake.global_position.y + lake.water_level + 0.15:
+			continue
 		var d: float = lake.depth_at(xz)
 		if d > depth:
 			depth = d

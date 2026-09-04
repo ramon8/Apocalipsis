@@ -45,7 +45,8 @@ Orden propuesto por impacto visual por hora de trabajo. Marca lo hecho.
 - [ ] Carro de madera.
 - [ ] Poste indicador (interactuable: `InteractionZone` + bocadillo con el texto).
 - [ ] Barriles, cajas y sacos junto a las casas.
-- [ ] Muelle de madera y barca de remos (estáticos; navegar queda para más adelante).
+- [x] Muelle de madera (`Dock` sobre `Path3D`, transitable con rampa).
+- [ ] Barca de remos (estática; navegar queda para más adelante).
 
 ## 5. Vida
 
