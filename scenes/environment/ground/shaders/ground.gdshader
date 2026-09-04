@@ -9,7 +9,12 @@
 shader_type spatial;
 render_mode cull_back, diffuse_lambert, specular_disabled;
 
+// true = look pixel-art (texels snapeados, ruido cuantizado, bordes duros y punteados).
+// false = continuo: coordenadas sin snap, ruido suave, bordes con degradado. Comparar y elegir.
+uniform bool pixel_art = true;
 uniform sampler2D albedo_tex : source_color, filter_nearest, repeat_enable, hint_default_white;
+// Suavidad de los bordes (hierba, camino) en modo continuo, en valor de ruido.
+uniform float smooth_edge : hint_range(0.01, 0.5, 0.01) = 0.12;
 uniform vec4 albedo_color : source_color = vec4(0.53, 0.40, 0.31, 1.0);
 // Metres covered by one texture tile.
 uniform float tile_size : hint_range(0.25, 20.0, 0.25) = 2.0;
@@ -116,6 +121,9 @@ float organic(vec2 p, float scale) {
 }
 
 float quantize(float v) {
+	if (!pixel_art) {
+		return v;
+	}
 	float n = float(max(levels - 1, 1));
 	return floor(v * n + 0.5) / n;
 }
@@ -135,7 +143,7 @@ void vertex() {
 
 void fragment() {
 	// Snap the sample position to the texel grid: crisp pixels instead of smooth gradients.
-	vec2 texel = floor(world_pos.xz * texels_per_meter) / texels_per_meter;
+	vec2 texel = pixel_art ? floor(world_pos.xz * texels_per_meter) / texels_per_meter : world_pos.xz;
 
 	vec3 base = texture(albedo_tex, texel / tile_size).rgb * albedo_color.rgb;
 
@@ -155,7 +163,8 @@ void fragment() {
 	float mask = path_mask_at(texel);
 	float edge_n = organic(texel + 101.0, path_edge_scale);
 	float threshold = 0.5 + (edge_n - 0.5) * path_edge_noise;
-	float path = (mask > 0.0 && mask >= threshold) ? 1.0 : 0.0;
+	float path = pixel_art ? ((mask > 0.0 && mask >= threshold) ? 1.0 : 0.0)
+			: smoothstep(threshold - smooth_edge * 0.5, threshold + smooth_edge * 0.5, mask) * step(0.001, mask);
 
 	// --- hierba a parches, lejos de los caminos.
 	float grass = 0.0;
@@ -167,27 +176,35 @@ void fragment() {
 		// parche se deshilacha en matas sueltas en vez de cortarse en bloque.
 		float band = grass_edge_dither;
 		float dither_r = hash21(texel * 3.3 + 11.0);
-		if (g > thr + band) {
-			grass = 1.0;
-		} else if (g > thr - band) {
-			grass = (dither_r < (g - (thr - band)) / (2.0 * band)) ? 1.0 : 0.0;
-		}
-		// Se retira del camino y de sus anillos exteriores (tambien con borde punteado).
-		if (mask > grass_path_margin) {
-			grass = 0.0;
-		} else if (mask > 0.0) {
-			grass *= (dither_r < 1.0 - mask / grass_path_margin) ? 1.0 : 0.0;
+		float dark = organic(texel + 7.0, grass_detail_scale * 1.7);
+		if (pixel_art) {
+			if (g > thr + band) {
+				grass = 1.0;
+			} else if (g > thr - band) {
+				grass = (dither_r < (g - (thr - band)) / (2.0 * band)) ? 1.0 : 0.0;
+			}
+			// Se retira del camino y de sus anillos exteriores (tambien con borde punteado).
+			if (mask > grass_path_margin) {
+				grass = 0.0;
+			} else if (mask > 0.0) {
+				grass *= (dither_r < 1.0 - mask / grass_path_margin) ? 1.0 : 0.0;
+			}
+			float in_core = (g > thr + band + 0.08) ? 1.0 : 0.0;  // el tono oscuro solo en el interior
+			grass_col = mix(grass_color.rgb, grass_dark_color.rgb, in_core * ((dark > 1.0 - grass_dark_amount) ? 1.0 : 0.0));
+		} else {
+			grass = smoothstep(thr - smooth_edge, thr + smooth_edge, g);
+			grass *= 1.0 - smoothstep(0.0, grass_path_margin, mask);
+			float in_core = smoothstep(thr, thr + smooth_edge * 2.0, g);
+			float dark_w = smoothstep(1.0 - grass_dark_amount - 0.1, 1.0 - grass_dark_amount + 0.1, dark);
+			grass_col = mix(grass_color.rgb, grass_dark_color.rgb, in_core * dark_w);
 		}
 		grass *= 1.0 - path;
-		float dark = organic(texel + 7.0, grass_detail_scale * 1.7);
-		float in_core = (g > thr + band + 0.08) ? 1.0 : 0.0;  // el tono oscuro solo en el interior
-		grass_col = mix(grass_color.rgb, grass_dark_color.rgb, in_core * ((dark > 1.0 - grass_dark_amount) ? 1.0 : 0.0));
 		grass_col *= 1.0 + grain * 2.0 * grain_strength;
 	}
 
-	// Speckles, one texel each.
+	// Speckles, one texel each (solo tienen sentido con texels: en continuo serian ruido por pixel).
 	float s = hash21(texel * 7.1 + 3.7);
-	float speckle_scale = mix(1.0, path_speckle_factor, path);
+	float speckle_scale = pixel_art ? mix(1.0, path_speckle_factor, path) : 0.0;
 	if (s < speckle_density * speckle_scale) {
 		col = base * speckle_brightness;
 	} else if (s > 1.0 - light_speckle_density * speckle_scale) {
@@ -195,11 +212,15 @@ void fragment() {
 	}
 
 	col = mix(col, col * path_tint.rgb, path);
-	if (grass > 0.5) {
-		col = grass_col;
-		if (s > 1.0 - grass_speckle_density) {
-			col = grass_color.rgb * 1.35;
+	if (pixel_art) {
+		if (grass > 0.5) {
+			col = grass_col;
+			if (s > 1.0 - grass_speckle_density) {
+				col = grass_color.rgb * 1.35;
+			}
 		}
+	} else {
+		col = mix(col, grass_col, grass);
 	}
 
 	ALBEDO = col;

@@ -16,8 +16,8 @@
 [ext_resource type="PackedScene" path="res://scenes/props/heno/heno.tscn" id="16_jbj1t"]
 [ext_resource type="PackedScene" uid="uid://dg284isaygq4t" path="res://scenes/interiors/molinos/molino_sur.tscn" id="16_sur"]
 [ext_resource type="PackedScene" path="res://scenes/npc/npc.tscn" id="17_muem4"]
-[ext_resource type="Script" path="res://scenes/environment/paths/ground_paths.gd" id="18_paths"]
-[ext_resource type="Script" path="res://scenes/environment/paths/ground_path.gd" id="19_path"]
+[ext_resource type="Script" uid="uid://da168etgghkpb" path="res://scenes/environment/paths/ground_paths.gd" id="18_paths"]
+[ext_resource type="Script" uid="uid://oop64piapaoq" path="res://scenes/environment/paths/ground_path.gd" id="19_path"]
 
 [sub_resource type="Gradient" id="Gradient_trceg"]
 offsets = PackedFloat32Array(0, 0.12, 0.5, 0.88, 1)
@@ -30,6 +30,13 @@ colors = PackedColorArray(0.015, 0.02, 0.06, 1, 0.06, 0.06, 0.14, 1, 0.2, 0.22, 
 [sub_resource type="Gradient" id="Gradient_jkv2x"]
 offsets = PackedFloat32Array(0, 0.35, 0.55, 1)
 colors = PackedColorArray(0.05, 0.06, 0.12, 1, 0.55, 0.3, 0.22, 1, 0.85, 0.55, 0.38, 1, 0.65, 0.7, 0.8, 1)
+
+[sub_resource type="Curve3D" id="Curve3D_village"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -30.602236, 0, -8.768768, 0, 0, 0, 0, 0, 0, -21.476675, 5.722046e-06, -15.165482, 0, 0, 0, 0, 0, 0, -33.856194, -1.9073486e-06, -19.200392, 0, 0, 0, 0, 0, 0, -21.110964, 0, -15.38221, 0, 0, 0, 0, 0, 0, -14.253283, -3.8146973e-06, -14.601101, 0, 0, 0, 0, 0, 0, -9.843687, 0, -15.89621, 0, 0, 0, 0, 0, 0, -5.670479, 0, -18.783026, 0, 0, 0, 0, 0, 0, -2.1575851, -3.8146973e-06, -19.372797, 0, 0, 0, 0, 0, 0, 0.97534275, 0, -19.711443, 0, 0, 0, 0, 0, 0, 6.567978, -3.8146973e-06, -17.752684, 0, 0, 0, 0, 0, 0, 18.88702, 0, -11.922129, 0, 0, 0, 0, 0, 0, 31.090374, 0, -7.112628, 0, 0, 0, 0, 0, 0, 40.578285, 3.8146973e-06, -5.832404, 0, 0, 0, 0, 0, 0, 51.03496, 0, -5.2479258, 0, 0, 0, 0, 0, 0, 58.123306, 0, -5.3822546, 0, 0, 0, 0, 0, 0, 66.030106, -3.8146973e-06, -4.7283754, 0, 0, 0, 0, 0, 0, 71.980034, 3.8146973e-06, -2.3287039, 0, 0, 0, 0, 0, 0, 82.298416, 3.8146973e-06, 7.3013115),
+"tilts": PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+}
+point_count = 18
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 sky_top_color = Color(0.25, 0.35, 0.55, 1)
@@ -58,14 +65,6 @@ size = Vector2(1000, 1000)
 [sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
 size = Vector3(1000, 1, 1000)
 
-[sub_resource type="Curve3D" id="Curve3D_village"]
-_data = {
-"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 39, 0, -6.6, 0, 0, 0, 0, 0, 0, 18, 0, -9, 0, 0, 0, 0, 0, 0, -2, 0, -14, 0, 0, 0, 0, 0, 0, -16, 0, -17, 0, 0, 0, 0, 0, 0, -26, 0, -12, 0, 0, 0, 0, 0, 0, -31, 0, -8),
-"tilts": PackedFloat32Array(0, 0, 0, 0, 0, 0),
-"closed": false
-}
-point_count = 6
-
 [node name="Main" type="Node" unique_id=1477144514]
 
 [node name="World" type="Node3D" parent="." unique_id=863254421]
@@ -82,16 +81,15 @@ sky_horizon_gradient = SubResource("Gradient_jkv2x")
 
 [node name="ScatterWorld" parent="World" unique_id=1742216399 node_paths=PackedStringArray("paths") instance=ExtResource("1_85g3d")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -103.82768, 0, 0)
-paths = NodePath("../GroundPaths")
 tree_scenes = Array[PackedScene]([ExtResource("2_eb6dy"), ExtResource("3_trceg")])
 prop_density = 50.0
 bush_weight = 0.25
 bush_height = 1.5
+paths = NodePath("GroundPaths")
 patchiness = 1.0
 patch_scale = 195.0
 patch_threshold = 0.49
 grass_enabled = false
-grass_density = 10.0
 grass_height_range = Vector2(0.18, 0.3)
 grass_base_color = Color(0.10980392, 0.0627451, 0.03529412, 1)
 grass_tip_color = Color(0.10980392, 0.0627451, 0.03529412, 1)
@@ -99,6 +97,16 @@ grass_variation_color = Color(0.10980392, 0.0627451, 0.03529412, 1)
 grass_variation_amount = 0.2
 grass_blade_width = 0.115
 grass_billboard_tilt = 1.0
+
+[node name="GroundPaths" type="Node3D" parent="World/ScatterWorld" unique_id=618101469 node_paths=PackedStringArray("ground")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 103.82768, 0, 0)
+script = ExtResource("18_paths")
+ground = NodePath("../../MeshInstance3D")
+edge_spread = 1.15
+
+[node name="Path" type="Path3D" parent="World/ScatterWorld/GroundPaths" unique_id=1634760849]
+curve = SubResource("Curve3D_village")
+script = ExtResource("19_path")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="World" unique_id=235434014]
 environment = SubResource("Environment_env")
@@ -114,18 +122,9 @@ directional_shadow_fade_start = 1.0
 directional_shadow_max_distance = 250.0
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="World" unique_id=36483498]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.16101646, -0.115327835, -0.0028800964)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.21292686, -0.11532402, 0.022833824)
 material_override = ExtResource("9_ground")
 mesh = SubResource("PlaneMesh_floor")
-
-[node name="GroundPaths" type="Node3D" parent="World" node_paths=PackedStringArray("ground")]
-script = ExtResource("18_paths")
-ground = NodePath("../MeshInstance3D")
-
-[node name="Path" type="Path3D" parent="World/GroundPaths"]
-curve = SubResource("Curve3D_village")
-script = ExtResource("19_path")
-width = 2.5
 
 [node name="Floor" type="StaticBody3D" parent="World" unique_id=639489277]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)

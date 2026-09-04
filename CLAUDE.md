@@ -253,6 +253,9 @@ repinta solo al mover puntos en el editor.
 - El ruido de la hierba y del borde del camino es de gradiente con dominio deformado
   (`organic()` en el shader). No uses `vnoise` (ruido de valor) para umbralizar parches:
   deja bordes rectos alineados a los ejes.
+- `pixel_art` en el material alterna entre el look de texels (snap a 4/m, ruido cuantizado,
+  bordes duros y punteados) y un modo continuo (coordenadas sin snap, bordes con
+  `smooth_edge`). Ahora está en `false` para comparar; el look retro original es `true`.
 - Hierba: `grass_coverage`, `grass_scale` (tamaño de parche), `grass_edge_dither` (borde
   en matas), `grass_path_margin` (cuánto se aparta del camino). La hierba de blades del
   `ScatterWorld` está desactivada (`grass_enabled = false`): metía ruido.
