@@ -27,8 +27,9 @@ static func spawn(parent: Node, world_pos: Vector3, size := 1.0, life := 0.9, ri
 	if lake and lake.has_method("mask_texture") and lake.mask_texture():
 		r._mat.set_shader_parameter("clip_enabled", true)
 		r._mat.set_shader_parameter("clip_mask", lake.mask_texture())
-		var reg: Rect2 = lake.mask_region()
+		var reg: Rect2 = lake.mask_region_local()
 		r._mat.set_shader_parameter("clip_region", Vector4(reg.position.x, reg.position.y, reg.size.x, reg.size.y))
+		r._mat.set_shader_parameter("clip_inverse", (lake as Node3D).global_transform.affine_inverse())
 	r.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(r)
 	r.global_position = world_pos

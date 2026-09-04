@@ -10,7 +10,8 @@ uniform float rings = 1.0;
 // Recorte con la mascara del lago (G = dentro): la onda no se dibuja sobre tierra.
 uniform bool clip_enabled = false;
 uniform sampler2D clip_mask : hint_default_white, filter_linear, repeat_disable;
-uniform vec4 clip_region = vec4(0.0, 0.0, 1.0, 1.0);  // (min_x, min_z, ancho, alto) en metros
+uniform vec4 clip_region = vec4(0.0, 0.0, 1.0, 1.0);  // (min_x, min_z, ancho, alto) en metros LOCALES del lago
+uniform mat4 clip_inverse = mat4(1.0);  // mundo -> local del lago
 
 varying vec3 world_pos;
 
@@ -20,7 +21,8 @@ void vertex() {
 
 void fragment() {
 	if (clip_enabled) {
-		vec2 cuv = (world_pos.xz - clip_region.xy) / clip_region.zw;
+		vec3 lake_local = (clip_inverse * vec4(world_pos, 1.0)).xyz;
+		vec2 cuv = (lake_local.xz - clip_region.xy) / clip_region.zw;
 		if (any(lessThan(cuv, vec2(0.0))) || any(greaterThan(cuv, vec2(1.0))) || texture(clip_mask, cuv).g < 0.5) {
 			discard;
 		}

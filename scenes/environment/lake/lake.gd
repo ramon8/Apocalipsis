@@ -124,13 +124,14 @@ var _building := false
 var _bbox := Rect2()  # bbox local de la mascara (m)
 
 
-## Mascara de forma (R distancia, G dentro) y region que cubre, en metros de mundo (XZ).
+## Mascara de forma (R distancia, G dentro) y region que cubre, en metros LOCALES (XZ) del
+## lago: convierte con `global_transform.affine_inverse()` (el lago puede estar girado).
 func mask_texture() -> Texture2D:
 	return _viewport.get_texture() if _viewport else null
 
 
-func mask_region() -> Rect2:
-	return Rect2(_bbox.position + Vector2(global_position.x, global_position.z), _bbox.size)
+func mask_region_local() -> Rect2:
+	return _bbox
 
 
 func _ready() -> void:
@@ -184,7 +185,8 @@ func _clear() -> void:
 ## Estampa estela en metros de mundo (lo llama Wading al moverse dentro del agua).
 func add_wake(world_xz: Vector2, radius_m: float, strength := 1.0) -> void:
 	if _wake and wake_enabled:
-		_wake.stamp(world_xz, radius_m, strength)
+		var local := to_local(Vector3(world_xz.x, global_position.y, world_xz.y))
+		_wake.stamp(Vector2(local.x, local.z), radius_m, strength)
 
 
 ## Puntos de la orilla en espacio local (XZ), a ~0.5 m.
@@ -286,7 +288,7 @@ func _build_wake(bbox: Rect2) -> void:
 	_wake.life = wake_life
 	_wake.spread = wake_spread
 	_wake.px_per_m = wake_px_per_m
-	_wake.origin = bbox.position + Vector2(global_position.x, global_position.z)
+	_wake.origin = bbox.position  # coordenadas locales del lago
 	_wake_viewport.add_child(_wake)
 	_wake.resize(size)
 

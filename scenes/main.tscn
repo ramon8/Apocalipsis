@@ -44,12 +44,27 @@ _data = {
 }
 point_count = 18
 
-[sub_resource type="Curve3D" id="Curve3D_lake"]
+[sub_resource type="Curve3D" id="Curve3D_y6deb"]
 _data = {
-"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 14.74, 0, 0, 0, 0, 0, 0, 0, 0, 13.12, 0, 6.55, 0, 0, 0, 0, 0, 0, 4.75, 0, 10.05, 0, 0, 0, 0, 0, 0, -5.1, 0, 10.79, 0, 0, 0, 0, 0, 0, -13.43, 0, 6.71, 0, 0, 0, 0, 0, 0, -13.91, 0, 0, 0, 0, 0, 0, 0, 0, -11.05, 0, -5.52, 0, 0, 0, 0, 0, 0, -5.44, 0, -11.52, 0, 0, 0, 0, 0, 0, 4.266611, 1.9073486e-06, -11.433792, 0, 0, 0, 0, 0, 0, 11.91, 0, -5.95),
-"tilts": PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -4.846245, 0, -12.104965, 0, 0, 0, 0, 0, 0, -5.611141, 3.8146973e-06, -17.35913, 0, 0, 0, 0, 0, 0, -4.3418045, 0, -26.731094, 0, 0, 0, 0, 0, 0, -1.2871284, -3.8146973e-06, -33.149998, 0, 0, 0, 0, 0, 0, 4.7559013, -3.8146973e-06, -41.12353, 0, 0, 0, 0, 0, 0, 12.619425, 0, -50.17842, 0, 0, 0, 0, 0, 0, 28.34782, 0, -65.08953, 0, 0, 0, 0, 0, 0, 34.468952, 0, -68.8128, 0, 0, 0, 0, 0, 0, 41.3771, 0, -72.32948, 0, 0, 0, 0, 0, 0, 47.635033, 0, -74.78604, 0, 0, 0, 0, 0, 0, 53.718555, 0, -76.77359, 0, 0, 0, 0, 0, 0, 61.522797, 0, -79.30037, 0, 0, 0, 0, 0, 0, 67.08772, -3.8146973e-06, -83.3673, 0, 0, 0, 0, 0, 0, 74.17972, 0, -90.12631, 0, 0, 0, 0, 0, 0, 79.76987, 0, -96.7386, 0, 0, 0, 0, 0, 0, 85.114914, -7.6293945e-06, -105.397156),
+"tilts": PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 }
-point_count = 10
+point_count = 17
+
+[sub_resource type="Curve3D" id="Curve3D_og1vs"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.007709503, 9.536743e-07, 3.8620758, 0, 0, 0, 0, 0, 0, 1.3413963, 0, 7.460312, 0, 0, 0, 0, 0, 0, 3.7371254, 0, 9.075226, 0, 0, 0, 0, 0, 0, 8.589756, 0, 13.617752, 0, 0, 0, 0, 0, 0, 12.042622, 1.9073486e-06, 18.903854, 0, 0, 0, 0, 0, 0, 13.709896, 0, 24.277847, 0, 0, 0, 0, 0, 0, 14.699749, 0, 29.400871, 0, 0, 0, 0, 0, 0, 13.7904625, 0, 36.56524),
+"tilts": PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0)
+}
+point_count = 9
+
+[sub_resource type="Curve3D" id="Curve3D_lake"]
+closed = true
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -20.099098, 3.8146973e-06, 3.2510376, 0, 0, 0, 0, 0, 0, -12.993938, 7.6293945e-06, -7.3921204, 0, 0, 0, 0, 0, 0, -5.44, 0, -11.52, 0, 0, 0, 0, 0, 0, 4.266611, 1.9073486e-06, -11.433792, 0, 0, 0, 0, 0, 0, 11.91, 0, -5.95, 0, 0, 0, 0, 0, 0, 18.397945, 0, 1.668747, 0, 0, 0, 0, 0, 0, 20.884754, 3.8146973e-06, 6.470108, 0, 0, 0, 0, 0, 0, 21.095562, 3.8146973e-06, 11.593079, 0, 0, 0, 0, 0, 0, 19.483051, 3.8146973e-06, 17.967255, 0, 0, 0, 0, 0, 0, 15.830791, 3.8146973e-06, 22.5932, 0, 0, 0, 0, 0, 0, 10.040775, 3.8146973e-06, 26.618462, 0, 0, 0, 0, 0, 0, 2.8553429, 3.8146973e-06, 28.98066, 0, 0, 0, 0, 0, 0, -4.5918236, 3.8146973e-06, 32.701645, 0, 0, 0, 0, 0, 0, -9.8272705, 3.8146973e-06, 36.82106, 0, 0, 0, 0, 0, 0, -16.385628, 3.8146973e-06, 40.156693, 0, 0, 0, 0, 0, 0, -23.546253, 3.8146973e-06, 42.503204, 0, 0, 0, 0, 0, 0, -28.334122, 3.8146973e-06, 41.20826, 0, 0, 0, 0, 0, 0, -32.92109, 3.8146973e-06, 37.94349, 0, 0, 0, 0, 0, 0, -35.308624, 7.6293945e-06, 33.48665, 0, 0, 0, 0, 0, 0, -36.4426, 3.8146973e-06, 27.958855, 0, 0, 0, 0, 0, 0, -36.43174, 3.8146973e-06, 22.139435, 0, 0, 0, 0, 0, 0, -33.51867, 7.6293945e-06, 16.671509, 0, 0, 0, 0, 0, 0, -30.106709, 3.8146973e-06, 11.186729, 0, 0, 0, 0, 0, 0, -26.20371, 3.8146973e-06, 7.6237946),
+"tilts": PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+}
+point_count = 24
 
 [sub_resource type="Curve3D" id="Curve3D_dock"]
 _data = {
@@ -136,14 +151,27 @@ grass_billboard_tilt = 1.0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 103.82768, 0, 0)
 script = ExtResource("18_paths")
 ground = NodePath("../../MeshInstance3D")
+region_size = Vector2(500, 500)
 edge_spread = 1.15
 
 [node name="Path" type="Path3D" parent="World/ScatterWorld/GroundPaths" unique_id=1634760849]
 curve = SubResource("Curve3D_village")
 script = ExtResource("19_path")
 
+[node name="GroundPath" type="Path3D" parent="World/ScatterWorld/GroundPaths" unique_id=1100153013]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.191082, 0, -19.166473)
+curve = SubResource("Curve3D_y6deb")
+script = ExtResource("19_path")
+metadata/_custom_type_script = "uid://oop64piapaoq"
+
+[node name="GroundPath2" type="Path3D" parent="World/ScatterWorld/GroundPaths" unique_id=497381033]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 62.02216, 0, -146.4317)
+curve = SubResource("Curve3D_og1vs")
+script = ExtResource("19_path")
+metadata/_custom_type_script = "uid://oop64piapaoq"
+
 [node name="Lake" parent="World" unique_id=151334420 instance=ExtResource("22_lake")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.743408, 0, 0.5237999)
+transform = Transform3D(0.99936587, 0, -0.03560672, 0, 1, 0, 0.03560672, 0, 0.99936587, 48.930202, -3.8146973e-06, -133.70537)
 curve = SubResource("Curve3D_lake")
 pixel_art = true
 shallow_width = 3.4
@@ -162,8 +190,6 @@ width_scale = 1.4
 
 [node name="House1" parent="World" unique_id=899507254 instance=ExtResource("25_house1")]
 transform = Transform3D(0.9462405, 0, 0.32346427, 0, 1, 0, -0.32346427, 0, 0.9462405, -10.478218, -0.29228735, -21.072275)
-interior_shape = null
-interior_rect_fit = null
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="World" unique_id=235434014]
 environment = SubResource("Environment_env")
@@ -196,7 +222,7 @@ gust_travel_speed = 4.0
 local_direction_variation_deg = 25.0
 
 [node name="Player" parent="World" unique_id=872944500 instance=ExtResource("2_player")]
-transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, 3.050026, 0, -15.227058)
+transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, 40.606293, 0, -94.90731)
 walk_speed = 2.0
 run_speed = 3.8
 acceleration = 24.0
@@ -226,8 +252,7 @@ grime_amount = 0.4
 weathering_amount = 0.2
 dirt_amount = 0.9
 interior_scene = ExtResource("15_norte")
-interior_shape = null
-interior_rect_fit = null
+interior_shape = 0
 bounds_mesh_name = "Molino"
 
 [node name="Molino2" parent="World" unique_id=1275929520 instance=ExtResource("13_trceg")]
@@ -237,8 +262,7 @@ grime_amount = 0.4
 weathering_amount = 0.45
 dirt_amount = 0.95
 interior_scene = ExtResource("16_sur")
-interior_shape = null
-interior_rect_fit = null
+interior_shape = 0
 bounds_mesh_name = "Molino"
 
 [node name="Heno9" type="Node" parent="World" unique_id=1934328431]
@@ -272,9 +296,12 @@ transform = Transform3D(-0.99997884, 0, 0.006511748, 0, 1, 0, -0.006511748, 0, -
 curve = SubResource("Curve3D_2bd0u")
 
 [node name="FenceGate" type="Node3D" parent="World/Fence" unique_id=942708825]
-transform = Transform3D(-0.03473558, 0, 0.99939656, 0, 1, 0, 0.99939656, 0, 0.03473558, 13.91277, 0, -8.404028)
+transform = Transform3D(-0.03473558, 0, 0.99939656, 0, 1, 0, 0.99939656, 0, 0.03473558, 13.912107, 0, -8.384944)
 script = ExtResource("21_gate")
 metadata/_custom_type_script = "uid://dhteqns123r3b"
+
+[node name="House2" parent="World" unique_id=203197771 instance=ExtResource("25_house1")]
+transform = Transform3D(0.99048257, 0, -0.1376381, 0, 1, 0, 0.1376381, 0, 0.99048257, 62.325424, 0, -148.052)
 
 [node name="Npc" parent="." unique_id=1532924274 instance=ExtResource("17_muem4")]
 transform = Transform3D(-0.42931247, 0, -0.90315604, 0, 1, 0, 0.90315604, 0, -0.42931247, -24.090452, 0.08111334, -19.770689)

@@ -11,7 +11,7 @@ var life := 1.4
 ## Cuanto crece el radio al disiparse (1.6 = 60% mas grande al final).
 var spread := 1.6
 var px_per_m := 8.0
-var origin := Vector2.ZERO  # metros de mundo (XZ) del pixel (0,0)
+var origin := Vector2.ZERO  # metros LOCALES del lago (XZ) del pixel (0,0)
 
 var _stamps: Array = []  # [Vector2 px, radius px, strength, t0]
 var _time := 0.0
@@ -27,9 +27,9 @@ func resize(_size: Vector2i) -> void:
 	pass
 
 
-## Estampa un disco en metros de mundo (XZ).
-func stamp(world_xz: Vector2, radius_m: float, strength: float) -> void:
-	_stamps.append([(world_xz - origin) * px_per_m, radius_m * px_per_m, strength, _time])
+## Estampa un disco en metros locales del lago (XZ).
+func stamp(local_xz: Vector2, radius_m: float, strength: float) -> void:
+	_stamps.append([(local_xz - origin) * px_per_m, radius_m * px_per_m, strength, _time])
 
 
 func _process(delta: float) -> void:
