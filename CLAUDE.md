@@ -361,10 +361,27 @@ de capturar; `SCREENSHOT_MOVE="vx,vz"` mueve al jugador a esa velocidad durante 
 cámara (menor = más cerca, 55 es el valor de juego); `SCREENSHOT_MASK=mask.png`
 vuelca además la máscara de caminos. Abre una ventana unos segundos.
 
+## Edificios (`Building`)
+
+`Building` (`scenes/props/building/building.gd`) es la base de todo edificio con interior:
+casas, molinos, iglesia. Espera un hijo `Model` (instancia del GLB con colisión `-col`) y
+se encarga del shader de envejecido (`grime_amount`, `weathering_amount`, `dirt_amount`,
+`dirt_height`), de la `Room` interior centrada en el AABB del modelo con el mayor círculo
+que cabe en la planta, y de la zona de la puerta en la cara `door_angle_deg` (0 = +Z
+local). `Molino` extiende `Building` con las aspas y fija `bounds_mesh_name = "Molino"`
+para que las aspas no cuenten en la planta.
+
+**Casa nueva:** exporta el GLB a `assets/models/Houses/` (colisión `-col`, origen en el
+suelo, un material con la textura de paleta), crea `scenes/props/house/<casa>.tscn` con un
+`Node3D` + script `building.gd` y el modelo como hijo `Model` a escala 0.3, crea
+`scenes/interiors/houses/<casa>_room.tscn` heredada de `room.tscn` con su `room_id` y
+asígnala en `interior_scene`. Ajusta `door_angle_deg` hasta que la zona caiga en la puerta
+del modelo. Pendiente: ventanas con luz nocturna (mallas con "window" en el nombre).
+
 ## Interiores
 
 `Room` (`scenes/interiors/room.gd`) es una escena heredada de `room.tscn` con `room_id`
-único. Un edificio (`Molino`) la instancia, y su `InteractionZone` en la puerta llama a
+único. Un edificio (`Building`) la instancia, y su `InteractionZone` en la puerta llama a
 `room.enter(player)` / `room.exit(player)`. "Estar dentro" es lógico y vale para NPCs; el
 cambio de vista solo se aplica al jugador. Los NPC dentro de una `Room` solo se ven,
 hablan y reaccionan si el jugador está en esa habitación. Al salir, el edificio pregunta

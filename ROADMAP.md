@@ -31,9 +31,9 @@ Orden propuesto por impacto visual por hora de trabajo. Marca lo hecho.
 
 ## 3. Edificios (Blender + pipeline del molino)
 
-- [ ] **Prop `Building` genérico.** GLB con colisión `-col`, shader de envejecido,
-      `ModelMaterials`, `Room` opcional, lista de luces de ventana.
-- [ ] **Casa de piedra** con ventana iluminada (material emisivo + `OmniLight3D` sin
+- [x] **Prop `Building` genérico.** GLB con colisión `-col`, shader de envejecido, `Room`
+      y puerta. Molino y casa lo usan. Falta: luces de ventana.
+- [~] **Casa de piedra** (house1 en escena) con ventana iluminada (material emisivo + `OmniLight3D` sin
       sombra ligada al ciclo día-noche). Variante con porche.
 - [ ] **Iglesia** con campanario.
 - [ ] **Torre de vigilancia** de madera con bandera (tela con el shader de viento).

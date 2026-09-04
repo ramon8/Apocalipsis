@@ -23,6 +23,7 @@
 [ext_resource type="PackedScene" path="res://scenes/environment/lake/lake.tscn" id="22_lake"]
 [ext_resource type="PackedScene" path="res://scenes/props/dock/dock.tscn" id="23_dock"]
 [ext_resource type="PackedScene" path="res://scenes/props/crops/crop_field.tscn" id="24_field"]
+[ext_resource type="PackedScene" path="res://scenes/props/house/house1.tscn" id="25_house1"]
 
 [sub_resource type="Gradient" id="Gradient_trceg"]
 offsets = PackedFloat32Array(0, 0.12, 0.5, 0.88, 1)
@@ -158,6 +159,9 @@ curve = SubResource("Curve3D_field")
 growth = 0.69
 plant_scale = 3.0
 width_scale = 1.4
+
+[node name="House1" parent="World" instance=ExtResource("25_house1")]
+transform = Transform3D(0.8660254, 0, 0.5, 0, 1, 0, -0.5, 0, 0.8660254, 26, 0, -18)
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="World" unique_id=235434014]
 environment = SubResource("Environment_env")
