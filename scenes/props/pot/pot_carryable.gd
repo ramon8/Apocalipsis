@@ -57,6 +57,7 @@ func _ready() -> void:
 		randomizer.random_pitch = lift_random_pitch
 		randomizer.random_volume_offset_db = lift_random_volume_db
 		_lift_player = AudioStreamPlayer3D.new()
+		_lift_player.bus = &"World"
 		_lift_player.name = "LiftSound"
 		_lift_player.stream = randomizer
 		_lift_player.volume_db = lift_volume_db

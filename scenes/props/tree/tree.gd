@@ -289,6 +289,7 @@ func _setup_interaction(width: float, height: float) -> void:
 		randomizer.random_pitch = rustle_random_pitch
 		randomizer.random_volume_offset_db = rustle_random_volume_db
 		_rustle_player = AudioStreamPlayer.new()
+		_rustle_player.bus = &"World"
 		_rustle_player.name = "Rustle"
 		_rustle_player.stream = randomizer
 		_rustle_player.max_polyphony = 2

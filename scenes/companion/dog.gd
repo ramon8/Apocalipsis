@@ -567,6 +567,7 @@ func _setup_bark() -> void:
 	randomizer.random_pitch = bark_random_pitch
 	randomizer.random_volume_offset_db = bark_random_volume_db
 	_bark_player = AudioStreamPlayer3D.new()
+	_bark_player.bus = &"World"
 	_bark_player.name = "Bark"
 	_bark_player.stream = randomizer
 	_bark_player.volume_db = bark_volume_db

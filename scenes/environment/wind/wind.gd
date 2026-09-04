@@ -102,6 +102,7 @@ func _setup_audio() -> void:
 	if Engine.is_editor_hint() or not audio_enabled or audio_stream == null:
 		return
 	_audio = AudioStreamPlayer.new()
+	_audio.bus = &"World"
 	_audio.name = "Ambience"
 	_audio.stream = audio_stream
 	_audio.bus = audio_bus

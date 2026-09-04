@@ -22,6 +22,9 @@ signal stepped(running: bool)
 ## true = AudioStreamPlayer3D posicionado en el personaje (NPCs, companeros);
 ## false = AudioStreamPlayer plano (el jugador, que siempre esta en el centro).
 @export var spatial := false
+## Bus de audio. "World" para sonidos del exterior (se amortiguan dentro de un edificio);
+## el jugador va por Master.
+@export var bus: StringName = &"Master"
 
 @export_group("Sound")
 ## Volumen base. Bajo: los pasos se sienten, no se oyen.
@@ -75,6 +78,7 @@ func setup(skeleton: Skeleton3D) -> void:
 		_wet = _randomizer(water_stream)
 	_player = AudioStreamPlayer3D.new() if spatial else AudioStreamPlayer.new()
 	_player.name = "Audio"
+	_player.bus = bus
 	_player.stream = _dry
 	_player.max_polyphony = 4
 	add_child(_player)

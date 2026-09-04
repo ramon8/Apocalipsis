@@ -281,6 +281,7 @@ func _rebuild() -> void:
 	# --- Sonido posicional (atenuado por distancia al listener del rig).
 	if fire_sound and not Engine.is_editor_hint():
 		_audio = AudioStreamPlayer3D.new()
+		_audio.bus = &"World"
 		_audio.name = "FireSound"
 		_audio.stream = fire_sound
 		_audio.volume_db = sound_volume_db

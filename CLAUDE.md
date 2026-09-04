@@ -18,6 +18,7 @@ godot --headless --path . --quit-after 3000 tests/dialogue_test.tscn
 godot --headless --path . --quit-after 3000 tests/fence_gate_test.tscn
 godot --headless --path . --quit-after 3000 tests/wading_test.tscn
 godot --headless --path . --quit-after 3000 tests/dock_test.tscn
+godot --headless --path . --quit-after 3000 tests/interior_audio_test.tscn
 ```
 
 - Los tests son escenas (`tests/*.tscn` con un script `extends Node`) para que carguen los
@@ -388,6 +389,14 @@ del modelo. Pendiente: ventanas con luz nocturna (mallas con "window" en el nomb
 cambio de vista solo se aplica al jugador. Los NPC dentro de una `Room` solo se ven,
 hablan y reaccionan si el jugador está en esa habitación. Al salir, el edificio pregunta
 a los NPC `try_farewell(player)` y retiene la salida hasta que el diálogo termina.
+
+**Audio de interior.** `default_bus_layout.tres` define el bus `World` (con un paso bajo)
+y una reverb en `Master`. Los sonidos del exterior (hoguera, viento, ladridos y pasos del
+perro, pot, árboles) van por `World`; el jugador, la voz de los NPC y la UI por `Master`.
+`RoomManager` escucha sus propias señales de ocupación y, cuando el jugador entra en una
+`Room`, cierra el paso bajo a `muffle_cutoff_hz`, baja `World` a `muffle_volume_db` y sube
+la reverb a `reverb_wet`, con transición `audio_transition`; al salir lo restaura. Un
+sonido nuevo del mundo debe fijar `bus = &"World"` (o el export `bus` de `FootstepAudio`).
 
 ## Perro (`scenes/companion/dog.gd`)
 
