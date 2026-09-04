@@ -33,7 +33,18 @@ func _ready() -> void:
 			var node := get_tree().root.find_child(node_prop[0], true, false)
 			if node and prop_val.size() == 2:
 				node.set(prop_val[0], str_to_var(prop_val[1]))
+	# SCREENSHOT_MOVE="vx,vz": desplaza al jugador a esa velocidad (m/s) durante la espera.
+	var move := Vector2.ZERO
+	var move_s := OS.get_environment("SCREENSHOT_MOVE")
+	if move_s != "":
+		var mp := move_s.split(",")
+		if mp.size() == 2:
+			move = Vector2(float(mp[0]), float(mp[1]))
+	var mover := get_tree().get_first_node_in_group("player") as Node3D
 	for i in frames:
+		if move != Vector2.ZERO and mover:
+			var dt := get_process_delta_time()
+			mover.global_position += Vector3(move.x, 0.0, move.y) * dt
 		await get_tree().process_frame
 	var mask_path := OS.get_environment("SCREENSHOT_MASK")
 	if mask_path != "":
@@ -41,6 +52,12 @@ func _ready() -> void:
 		if gp and gp._viewport:
 			var m: Image = gp._viewport.get_texture().get_image()
 			print("mask: ", mask_path, " region=", gp.ground.material_override.get_shader_parameter("path_region"), " err=", m.save_png(mask_path))
+	var wake_path := OS.get_environment("SCREENSHOT_WAKE")
+	if wake_path != "":
+		var lk := get_tree().get_first_node_in_group("lake")
+		if lk and lk._wake_viewport:
+			var wimg: Image = lk._wake_viewport.get_texture().get_image()
+			print("wake: ", wake_path, " size=", wimg.get_size(), " err=", wimg.save_png(wake_path))
 	var img := get_viewport().get_texture().get_image()
 	var path := OS.get_environment("SCREENSHOT_PATH")
 	if path == "":

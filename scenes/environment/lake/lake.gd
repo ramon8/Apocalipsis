@@ -78,6 +78,30 @@ const WATER_SHADER := preload("res://scenes/environment/lake/shaders/water.gdsha
 		collision_enabled = v
 		_rebuild()
 
+@export_group("Estela")
+## Estela que dejan los que se mueven por el agua (bufer que se disipa).
+@export var wake_enabled := true:
+	set(v):
+		wake_enabled = v
+		_set_param("wake_enabled", v)
+## Resolucion del bufer de estela (px/m).
+@export_range(2.0, 32.0, 1.0) var wake_px_per_m := 8.0:
+	set(v):
+		wake_px_per_m = v
+		_rebuild()
+## Segundos que tarda la estela en disiparse.
+@export_range(0.2, 6.0, 0.1) var wake_life := 1.4:
+	set(v):
+		wake_life = v
+		if _wake:
+			_wake.life = v
+## Cuanto se ensancha la estela al disiparse.
+@export_range(1.0, 3.0, 0.05) var wake_spread := 1.6:
+	set(v):
+		wake_spread = v
+		if _wake:
+			_wake.spread = v
+
 @export_group("Vadeo")
 ## Cuanto se hunde el personaje (m) al final de la franja somera; crece linealmente desde
 ## la orilla. En un charco, la profundidad maxima se alcanza en su punto mas interior.
@@ -92,6 +116,8 @@ const WATER_SHADER := preload("res://scenes/environment/lake/shaders/water.gdsha
 var _mesh: MeshInstance3D
 var _material: ShaderMaterial
 var _viewport: SubViewport
+var _wake_viewport: SubViewport
+var _wake: WakeCanvas
 var _body: StaticBody3D
 var _clearance: CurveClearance
 var _building := false
@@ -144,13 +170,21 @@ func _set_param(pname: String, value: Variant) -> void:
 
 
 func _clear() -> void:
-	for n in [_mesh, _viewport, _body]:
+	for n in [_mesh, _viewport, _wake_viewport, _body]:
 		if n:
 			n.free()
 	_mesh = null
 	_viewport = null
+	_wake_viewport = null
+	_wake = null
 	_body = null
 	_clearance = null
+
+
+## Estampa estela en metros de mundo (lo llama Wading al moverse dentro del agua).
+func add_wake(world_xz: Vector2, radius_m: float, strength := 1.0) -> void:
+	if _wake and wake_enabled:
+		_wake.stamp(world_xz, radius_m, strength)
 
 
 ## Puntos de la orilla en espacio local (XZ), a ~0.5 m.
@@ -180,6 +214,8 @@ func _rebuild() -> void:
 		bbox = bbox.grow(1.0)
 		_bbox = bbox
 		_build_mask(pts, bbox)
+		if not Engine.is_editor_hint():
+			_build_wake(bbox)
 		_build_mesh(bbox)
 		if collision_enabled:
 			_build_collision(pts)
@@ -230,6 +266,31 @@ func _build_mask(pts: PackedVector2Array, bbox: Rect2) -> void:
 	_viewport.add_child(inside)
 
 
+## Bufer de estela: viewport que WakeCanvas repinta cada frame con las estampas vivas.
+func _build_wake(bbox: Rect2) -> void:
+	var size := Vector2i(maxi(8, int(bbox.size.x * wake_px_per_m)), maxi(8, int(bbox.size.y * wake_px_per_m)))
+	_wake_viewport = SubViewport.new()
+	_wake_viewport.name = "WakeViewport"
+	_wake_viewport.size = size
+	_wake_viewport.disable_3d = true
+	_wake_viewport.transparent_bg = false
+	_wake_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_wake_viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ALWAYS
+	add_child(_wake_viewport, false, Node.INTERNAL_MODE_BACK)
+	var bg := ColorRect.new()  # fondo negro: sin estela = 0
+	bg.color = Color.BLACK
+	bg.size = Vector2(size)
+	_wake_viewport.add_child(bg)
+	_wake = WakeCanvas.new()
+	_wake.name = "Wake"
+	_wake.life = wake_life
+	_wake.spread = wake_spread
+	_wake.px_per_m = wake_px_per_m
+	_wake.origin = bbox.position + Vector2(global_position.x, global_position.z)
+	_wake_viewport.add_child(_wake)
+	_wake.resize(size)
+
+
 func _build_mesh(bbox: Rect2) -> void:
 	_material = ShaderMaterial.new()
 	_material.shader = WATER_SHADER
@@ -237,6 +298,9 @@ func _build_mesh(bbox: Rect2) -> void:
 			"foam_width", "ripple_strength", "water_alpha", "mask_range"]:
 		_material.set_shader_parameter(p, get(p))
 	_material.set_shader_parameter("mask", _viewport.get_texture())
+	_material.set_shader_parameter("wake_enabled", wake_enabled and _wake_viewport != null)
+	if _wake_viewport:
+		_material.set_shader_parameter("wake_tex", _wake_viewport.get_texture())
 	var plane := PlaneMesh.new()
 	plane.size = bbox.size
 	plane.subdivide_width = 1

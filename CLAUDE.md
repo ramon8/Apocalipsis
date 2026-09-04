@@ -307,7 +307,15 @@ procedural). Las ondas concéntricas (`SplashRipple`) existen pero están apagad
 textura de profundidad, busca en un disco de `contact_radius_px` píxeles geometría opaca
 cerca de la línea de flotación y pinta espuma animada a menos de `contact_halo` metros
 horizontales de ella. Vale para cualquier objeto que corte el agua sin avisar a nadie.
-`contact_width` debe quedar por debajo del hueco entre superficie y suelo (0.115 m). Para que otro personaje vadee, dale un `Wading` y
+`contact_width` debe quedar por debajo del hueco entre superficie y suelo (0.115 m).
+
+**Estela.** Al moverse por el agua, `Wading` llama a `Lake.add_wake(xz, radio, fuerza)` cada
+medio radio recorrido (por distancia, no por frame: si no se satura). `WakeCanvas`
+(`wake_canvas.gd`) vive en un `SubViewport` que se limpia cada frame y redibuja las
+estampas vivas con intensidad decreciente y radio creciente durante `wake_life` segundos;
+el shader lee el canal R (`wake_tex`) para aclarar el agua y poner espuma que se deshace en
+motas. No se intentó acumular en la GPU con `CLEAR_MODE_NEVER`: en Forward+ el
+`SubViewport` no conserva el contenido entre frames. Para que otro personaje vadee, dale un `Wading` y
 llama a `setup()` + `tick()` como hace el jugador.
 
 **Nodos que se recolocan solos.** No uses `set_notify_transform` en un hijo que su padre
@@ -323,7 +331,8 @@ SCREENSHOT_PATH=out.png SCREENSHOT_POS="5,-13" SCREENSHOT_ZOOM=14 godot --path .
 ```
 
 `SCREENSHOT_SET="Gate:open=true;Otro:prop=valor"` fija propiedades por nombre de nodo antes
-de capturar. `SCREENSHOT_POS` coloca al jugador (y la cámara) en ese XZ, `SCREENSHOT_ZOOM` acerca la
+de capturar; `SCREENSHOT_MOVE="vx,vz"` mueve al jugador a esa velocidad durante la espera;
+`SCREENSHOT_WAKE=wake.png` vuelca el búfer de estela del lago. `SCREENSHOT_POS` coloca al jugador (y la cámara) en ese XZ, `SCREENSHOT_ZOOM` acerca la
 cámara (menor = más cerca, 55 es el valor de juego); `SCREENSHOT_MASK=mask.png`
 vuelca además la máscara de caminos. Abre una ventana unos segundos.
 

@@ -46,6 +46,15 @@ uniform float contact_speed : hint_range(0.0, 4.0, 0.05) = 1.2;
 uniform float contact_noise_scale : hint_range(0.05, 2.0, 0.05) = 0.35;
 uniform float contact_break : hint_range(0.0, 1.0, 0.05) = 0.5;
 
+group_uniforms wake;
+// Estela (bufer que pinta Lake/WakeCanvas, canal R): espuma que se rompe al disiparse y
+// agua algo mas clara/revuelta.
+uniform bool wake_enabled = false;
+uniform sampler2D wake_tex : hint_default_black, filter_linear, repeat_disable;
+uniform float wake_foam_threshold : hint_range(0.05, 1.0, 0.01) = 0.42;
+uniform float wake_lighten : hint_range(0.0, 1.0, 0.05) = 0.35;
+uniform float wake_noise_scale : hint_range(0.05, 2.0, 0.05) = 0.3;
+
 group_uniforms foam;
 uniform vec4 foam_color : source_color = vec4(0.75, 0.76, 0.53, 1.0);
 // Ancho de la franja de espuma junto a la orilla (m) y separacion entre lineas (m).
@@ -157,6 +166,17 @@ void fragment() {
 		}
 	}
 	col = mix(col, foam_color.rgb, contact);
+
+	// Estela: la intensidad decae en el bufer; el ruido la deshace en motas al apagarse.
+	if (wake_enabled) {
+		float wk = texture(wake_tex, UV).r;
+		if (wk > 0.01) {
+			float n = gnoise(p / wake_noise_scale + vec2(TIME * 0.4, -TIME * 0.3));
+			col = mix(col, shallow_color.rgb, clamp(wk, 0.0, 1.0) * wake_lighten);
+			float foam_w = step(wake_foam_threshold, wk * (0.35 + 0.65 * n));
+			col = mix(col, foam_color.rgb, foam_w);
+		}
+	}
 
 	ALBEDO = col;
 	ALPHA = water_alpha * (edge_fade > 0.0 ? smoothstep(0.0, edge_fade, d) : 1.0);

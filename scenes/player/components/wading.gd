@@ -18,6 +18,10 @@ extends Node
 @export_range(1, 3) var ripple_rings := 1
 ## Onda extra continua mientras esta parado con agua (cada tantos segundos; 0 = no).
 @export_range(0.0, 5.0, 0.1) var idle_ripple_interval := 1.6
+## Estela al moverse por el agua (bufer del lago). Radio (m) y velocidad minima (m/s).
+@export var wake_enabled := true
+@export_range(0.1, 1.5, 0.05) var wake_radius := 0.32
+@export_range(0.0, 3.0, 0.1) var wake_min_speed := 0.4
 
 var depth := 0.0  # metros de agua bajo los pies (0 = seco)
 var _speed_factor := 1.0
@@ -29,6 +33,8 @@ var _idle_timer := 0.0
 var _lakes: Array[Node] = []
 var _lakes_refresh := 0.0
 var _current_lake: Node
+var _last_xz := Vector2.INF
+var _last_stamp_xz := Vector2.INF
 
 
 func setup(body: Node3D, model: Node3D, model_base_y: float) -> void:
@@ -66,6 +72,17 @@ func tick(delta: float) -> void:
 			depth = d
 			_current_lake = lake
 			_speed_factor = lerpf(1.0, lake.wade_speed_factor, clampf(d / maxf(lake.wade_depth, 0.001), 0.0, 1.0))
+	# Estela: estampar la posicion en el bufer del lago mientras se mueve.
+	if wake_enabled and _current_lake and _current_lake.has_method("add_wake") and _last_xz != Vector2.INF:
+		var speed := _last_xz.distance_to(xz) / maxf(delta, 0.0001)
+		# Por distancia, no por frame: si no, las estampas se solapan y saturan el bufer.
+		if speed >= wake_min_speed and (_last_stamp_xz == Vector2.INF or _last_stamp_xz.distance_to(xz) >= wake_radius * 0.5):
+			var strength := clampf(speed / 3.0, 0.5, 1.0) * clampf(depth / 0.1, 0.4, 1.0)
+			_current_lake.add_wake(xz, wake_radius, strength)
+			_last_stamp_xz = xz
+	if not in_water():
+		_last_stamp_xz = Vector2.INF
+	_last_xz = xz
 	_sink = lerpf(_sink, depth, 1.0 - exp(-sink_smoothing * delta))
 	if _model:
 		_model.position.y = _model_base_y - _sink
