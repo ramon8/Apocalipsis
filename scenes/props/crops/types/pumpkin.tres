@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CropType" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scenes/props/crops/crop_type.gd" id="1_crop"]
+[ext_resource type="Texture2D" path="res://assets/textures/crops/pumpkin_1.png" id="2_s1"]
+[ext_resource type="Texture2D" path="res://assets/textures/crops/pumpkin_2.png" id="3_s2"]
+[ext_resource type="Texture2D" path="res://assets/textures/crops/pumpkin_3.png" id="4_s3"]
+
+[resource]
+script = ExtResource("1_crop")
+crop_name = "Pumpkin"
+stage_textures = Array[Texture2D]([ExtResource("2_s1"), ExtResource("3_s2"), ExtResource("4_s3")])
+height = 0.55
+stage_heights = PackedFloat32Array(0.35, 0.8, 1.0)
+width_ratio = 0.9
+row_spacing = 1.3
+plant_spacing = 1.1

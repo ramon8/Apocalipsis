@@ -331,6 +331,18 @@ grupos `water_passage` (el lago no pone colisión de orilla bajo él) y `scatter
 `Wading` ignora el agua si el cuerpo está más de 0.15 m por encima de la superficie, así
 sobre el tablero no se hunde ni frena.
 
+**Cultivos.** `CropType` (`scenes/props/crops/crop_type.gd`, `.tres` en `types/`): sprites
+por fase de crecimiento (recortes con alpha, base en el borde inferior, como `bush.png`),
+altura por fase, aspecto, espaciado de hileras y respuesta al viento. `CropField`
+(`crop_field.gd`, escena `crop_field.tscn`) es un `Path3D` cerrado: la curva es la parcela.
+Planta en hileras (dirección del primer tramo o `row_angle_deg`) con `jitter`, como un
+`MultiMesh` de quads cruzados con normales hacia arriba y el shader de viento;
+`growth` 0..1 elige la fase (textura y altura) sin regenerar. Grupos `scatter_exclusion` y
+`ground_patch`: `GroundPaths` pinta su polígono en el canal G de la máscara y el suelo lo
+muestra como tierra labrada con surcos (`soil_*` en el material), sin hierba. Para un
+cultivo nuevo: tres PNG en `assets/textures/crops/`, un `.tres` y asignarlo a `crop`.
+Los sprites actuales son placeholders generados; se sustituyen por los dibujados a mano.
+
 **Nodos que se recolocan solos.** No uses `set_notify_transform` en un hijo que su padre
 recoloca al cargar (`FenceGate` lo hacía): el motor lanza `Condition "p_elem->_root !=
 this"`. Sondea la transform en `_process` solo en editor, como `GroundPaths` y `FenceGate`.

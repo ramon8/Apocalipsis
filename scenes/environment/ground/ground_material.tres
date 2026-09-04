@@ -43,3 +43,6 @@ shader_parameter/path_tint = Color(1.12, 1.06, 0.9, 1)
 shader_parameter/path_edge_noise = 0.45000000670554
 shader_parameter/path_edge_scale = 6.75
 shader_parameter/path_speckle_factor = 0.65000000968578
+shader_parameter/soil_tint = Color(0.72, 0.6, 0.5, 1)
+shader_parameter/soil_furrow_strength = 0.12
+shader_parameter/soil_furrow_spacing = 0.8

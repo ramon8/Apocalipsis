@@ -72,6 +72,13 @@ uniform float path_edge_scale : hint_range(0.25, 10.0, 0.25) = 1.25;
 // Las motas del suelo se reducen dentro del camino (tierra pisada, mas lisa).
 uniform float path_speckle_factor : hint_range(0.0, 1.0, 0.05) = 0.3;
 
+group_uniforms soil;
+// Parcelas labradas (canal G de la mascara, las pintan los CropField): tierra oscura sin
+// hierba, con surcos suaves.
+uniform vec4 soil_tint : source_color = vec4(0.72, 0.6, 0.5, 1.0);
+uniform float soil_furrow_strength : hint_range(0.0, 0.5, 0.01) = 0.12;
+uniform float soil_furrow_spacing : hint_range(0.2, 3.0, 0.05) = 0.8;
+
 varying vec3 world_pos;
 
 float hash21(vec2 p) {
@@ -128,13 +135,13 @@ float quantize(float v) {
 	return floor(v * n + 0.5) / n;
 }
 
-// Valor de la mascara de caminos en este texel (0 fuera de la region).
-float path_mask_at(vec2 texel) {
+// Mascara de caminos (R) y parcelas (G) en este texel (0 fuera de la region).
+vec2 ground_mask_at(vec2 texel) {
 	vec2 uv = (texel - path_region.xy) / path_region.zw;
 	if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) {
-		return 0.0;
+		return vec2(0.0);
 	}
-	return texture(path_mask, uv).r;
+	return texture(path_mask, uv).rg;
 }
 
 void vertex() {
@@ -160,7 +167,9 @@ void fragment() {
 	col = mix(col, col * patch_tint.rgb, dampness);
 
 	// --- caminos: mascara + ruido en el umbral = borde desgastado.
-	float mask = path_mask_at(texel);
+	vec2 gm = ground_mask_at(texel);
+	float mask = gm.r;
+	float soil = step(0.5, gm.g);
 	float edge_n = organic(texel + 101.0, path_edge_scale);
 	float threshold = 0.5 + (edge_n - 0.5) * path_edge_noise;
 	float path = pixel_art ? ((mask > 0.0 && mask >= threshold) ? 1.0 : 0.0)
@@ -199,6 +208,7 @@ void fragment() {
 			grass_col = mix(grass_color.rgb, grass_dark_color.rgb, in_core * dark_w);
 		}
 		grass *= 1.0 - path;
+		grass *= 1.0 - soil;
 		grass_col *= 1.0 + grain * 2.0 * grain_strength;
 	}
 
@@ -212,6 +222,11 @@ void fragment() {
 	}
 
 	col = mix(col, col * path_tint.rgb, path);
+	if (soil > 0.5) {
+		// Tierra labrada: mas oscura y con surcos (bandas suaves por ruido de baja frecuencia).
+		float furrow = 0.5 + 0.5 * sin((texel.x + texel.y) / soil_furrow_spacing * 6.2831853 + gnoise(texel / 3.0) * 2.0);
+		col = base * soil_tint.rgb * (1.0 - soil_furrow_strength * furrow + grain * 2.0 * grain_strength);
+	}
 	if (pixel_art) {
 		if (grass > 0.5) {
 			col = grass_col;

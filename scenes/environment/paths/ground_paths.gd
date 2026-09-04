@@ -58,6 +58,7 @@ func _ready() -> void:
 
 
 func _enter_tree() -> void:
+	add_to_group("ground_paths")
 	child_entered_tree.connect(_on_child_changed)
 	child_exiting_tree.connect(_on_child_changed)
 
@@ -124,8 +125,22 @@ func _paths() -> Array[GroundPath]:
 	return out
 
 
+## Nodos del grupo "ground_patch" con ground_polygon() (parcelas de cultivo): se pintan
+## como tierra labrada en el canal G de la mascara.
+func _patches() -> Array[Node]:
+	var out: Array[Node] = []
+	if not is_inside_tree():
+		return out
+	for n in get_tree().get_nodes_in_group("ground_patch"):
+		if n.has_method("ground_polygon"):
+			out.append(n)
+	return out
+
+
 func _content_hash() -> int:
 	var parts := [global_transform, region_size, mask_resolution]
+	for patch in _patches():
+		parts.append(patch.ground_polygon())
 	for p in _paths():
 		parts.append(p.global_transform)
 		parts.append(p.width)
@@ -233,6 +248,21 @@ func _repaint() -> void:
 			var v := path.strength * float(k + 1) / float(edge_rings)
 			line.default_color = Color(v, v, v, 1.0)
 			_lines_root.add_child(line)
+	# Parcelas: poligono en G (blend ADD para no borrar los caminos en R).
+	var add := CanvasItemMaterial.new()
+	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	for patch in _patches():
+		var world_poly: PackedVector2Array = patch.ground_polygon()
+		if world_poly.size() < 3:
+			continue
+		var px := PackedVector2Array()
+		for w in world_poly:
+			px.append(_to_mask(Vector3(w.x, 0.0, w.y)))
+		var poly := Polygon2D.new()
+		poly.polygon = px
+		poly.color = Color(0.0, 1.0, 0.0, 1.0)
+		poly.material = add
+		_lines_root.add_child(poly)
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 	_grid_dirty = true
 	version += 1

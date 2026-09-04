@@ -1,0 +1,8 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scenes/props/crops/crop_field.gd" id="1_field"]
+[ext_resource type="Resource" path="res://scenes/props/crops/types/wheat.tres" id="2_wheat"]
+
+[node name="CropField" type="Path3D"]
+script = ExtResource("1_field")
+crop = ExtResource("2_wheat")

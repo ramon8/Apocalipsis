@@ -25,8 +25,8 @@ Orden propuesto por impacto visual por hora de trabajo. Marca lo hecho.
 - [x] **Vallas por `Path3D`.** Postes cada N metros, dos travesaños, madera con el shader
       del banco, colisión por segmento. Cierra corrales dibujando la curva. Puertas
       (`FenceGate`) que se abren con la E. Los corrales quedan sin árboles.
-- [ ] **Campo de cultivo.** `ScatterArea` rectangular en rejilla con un tallo de trigo y el
-      shader de viento de los arbustos.
+- [x] **Campo de cultivo.** `CropField` sobre `Path3D`: hileras, fases de crecimiento por
+      `CropType` (trigo, calabaza, tomate), tierra labrada en el suelo. Sprites por dibujar.
 - [ ] **Cobertizo abierto.** Tejado sobre postes, procedural como el banco.
 
 ## 3. Edificios (Blender + pipeline del molino)
