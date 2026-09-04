@@ -73,6 +73,16 @@ func _run() -> void:
 	player.unlock(&"test")
 	_check(player.state == Player.State.LOCOMOTION, "unlock vuelve a LOCOMOTION")
 
+	# --- lock en marcha: el clip debe volver a Idle al frenar (bug: se quedaba en Walk/Run)
+	player._speed = player.run_speed
+	player._current_anim = player.run_animation
+	player._anim.play(player.run_animation)
+	player.lock(&"talk")
+	await _wait_until(func(): return player._current_anim == player.idle_animation, 3.0)
+	_check(player._current_anim == player.idle_animation, "LOCKED en marcha termina en Idle")
+	_check(player.state == Player.State.LOCKED, "sigue LOCKED tras frenar")
+	player.unlock(&"talk")
+
 	# --- dos razones de bloqueo
 	player.lock(&"a")
 	player.lock(&"b")

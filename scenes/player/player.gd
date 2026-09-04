@@ -272,11 +272,13 @@ func _physics_process(delta: float) -> void:
 
 	if state == State.ACTION:
 		_update_action()
-	elif state == State.LOCOMOTION:
+	elif state == State.LOCOMOTION or state == State.LOCKED:
+		# En LOCKED no hay input pero la velocidad sigue frenando: el clip tiene que
+		# acompanar hasta Idle en vez de quedarse congelado en Walk/Run.
 		_update_locomotion_anim(Vector2(velocity.x, velocity.z).length(), running)
 
 	if _footsteps:
-		var locomotion := state == State.LOCOMOTION \
+		var locomotion := (state == State.LOCOMOTION or state == State.LOCKED) \
 				and (_current_anim == walk_animation or _current_anim == run_animation)
 		_footsteps.tick(delta, locomotion, _current_anim == run_animation)
 	if _xray:
