@@ -139,6 +139,7 @@ var _camera_rig: Node3D
 var _skeleton: Skeleton3D
 var _footsteps: FootstepAudio
 var _xray: XrayVisibility
+var _wading: Wading
 var _hold_modifier: HoldPoseModifier
 var _hold_tween: Tween
 
@@ -174,6 +175,11 @@ func _ready() -> void:
 		_xray.setup(self, _model)
 	if _footsteps:
 		_footsteps.setup(_skeleton)
+	_wading = get_node_or_null("Wading") as Wading
+	if _wading:
+		_wading.setup(self, _model, model_ground_offset)
+		if _footsteps:
+			_footsteps.stepped.connect(func(_running: bool) -> void: _wading.ripple())
 	if _anim == null:
 		push_warning("Player: no AnimationPlayer found under Model; animations disabled.")
 		return
@@ -256,6 +262,9 @@ func _physics_process(delta: float) -> void:
 		State.LOCKED:
 			pass
 	var target_speed := run_speed if running else walk_speed
+	if _wading:
+		_wading.tick(delta)
+		target_speed *= _wading.speed_factor()
 
 	# Weight without drift: speed is a scalar that ramps slowly, and the character always
 	# moves along its facing. Direction changes become turns (arcs), never sideways sliding.
@@ -280,6 +289,7 @@ func _physics_process(delta: float) -> void:
 	if _footsteps:
 		var locomotion := (state == State.LOCOMOTION or state == State.LOCKED) \
 				and (_current_anim == walk_animation or _current_anim == run_animation)
+		_footsteps.in_water = _wading != null and _wading.in_water()
 		_footsteps.tick(delta, locomotion, _current_anim == run_animation)
 	if _xray:
 		_xray.tick()
@@ -675,3 +685,5 @@ func _apply_model_scale() -> void:
 		return
 	_model.scale = Vector3.ONE * model_scale
 	_model.position.y = model_ground_offset
+	if _wading:
+		_wading.setup(self, _model, model_ground_offset)

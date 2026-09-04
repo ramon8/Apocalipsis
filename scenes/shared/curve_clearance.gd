@@ -53,6 +53,17 @@ func clearance_at(p: Vector2) -> float:
 		return INF
 	if exclude_inside and Geometry2D.is_point_in_polygon(p, points):
 		return -1.0
+	return distance_to_line(p) - margin
+
+
+func is_inside(p: Vector2) -> bool:
+	return closed and points.size() >= 3 and bbox.has_point(p) and Geometry2D.is_point_in_polygon(p, points)
+
+
+## Distancia (m, siempre >= 0) del punto a la polilinea, sin margen ni test de interior.
+func distance_to_line(p: Vector2) -> float:
+	if points.size() < 2:
+		return INF
 	var best := INF
 	var n := points.size() if closed else points.size() - 1
 	for i in n:
@@ -62,4 +73,4 @@ func clearance_at(p: Vector2) -> float:
 		var l2 := ab.length_squared()
 		var t := 0.0 if l2 <= 0.000001 else clampf((p - a).dot(ab) / l2, 0.0, 1.0)
 		best = minf(best, p.distance_to(a + ab * t))
-	return best - margin
+	return best

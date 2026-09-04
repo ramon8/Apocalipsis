@@ -6,7 +6,8 @@ extends Path3D
 ## SubViewport (relleno + anillos de distancia) que el shader del agua usa para recortar,
 ## colorear por profundidad y poner espuma. La orilla lleva cajas de colision retranqueadas
 ## `wade_distance` metros hacia dentro (se puede vadear el borde, no nadar).
-## Se anade al grupo "scatter_exclusion": no crecen arboles dentro.
+## Se anade al grupo "scatter_exclusion": no crecen arboles dentro. Y al grupo "lake":
+## el componente Wading del jugador pregunta depth_at() para hundirse y chapotear.
 
 const WATER_SHADER := preload("res://scenes/environment/lake/shaders/water.gdshader")
 
@@ -77,6 +78,13 @@ const WATER_SHADER := preload("res://scenes/environment/lake/shaders/water.gdsha
 		wade_distance = v
 		_rebuild()
 
+@export_group("Vadeo")
+## Cuanto se hunde el personaje (m) al llegar al limite vadeable; crece linealmente desde
+## la orilla.
+@export_range(0.0, 1.0, 0.01) var wade_depth := 0.3
+## Velocidad del personaje con el agua a la profundidad maxima (1 = no frena).
+@export_range(0.1, 1.0, 0.05) var wade_speed_factor := 0.55
+
 @export_group("Dispersion")
 @export var clear_scatter := true
 @export_range(0.0, 5.0, 0.25) var scatter_margin := 1.5
@@ -96,6 +104,20 @@ func _ready() -> void:
 
 func _enter_tree() -> void:
 	add_to_group("scatter_exclusion")
+	add_to_group("lake")
+
+
+## Profundidad del agua (m) bajo un punto del mundo: 0 fuera del lago, y dentro crece con la
+## distancia a la orilla hasta `wade_depth` en `wade_distance` (mas alla no se puede pasar).
+func depth_at(world_xz: Vector2) -> float:
+	if curve == null:
+		return 0.0
+	if _clearance == null:
+		_clearance = CurveClearance.from_curve(curve, global_transform, true, scatter_margin, true)
+	if not _clearance.is_inside(world_xz):
+		return 0.0
+	var d := _clearance.distance_to_line(world_xz)
+	return wade_depth * clampf(d / maxf(wade_distance, 0.05), 0.0, 1.0)
 
 
 func clearance_at(world_xz: Vector2) -> float:

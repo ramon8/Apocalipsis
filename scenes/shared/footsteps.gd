@@ -8,8 +8,14 @@ extends Node
 ## Solo suena mientras el dueno dice que hay un clip de locomocion: llama a tick() cada
 ## frame de fisica.
 
+## Se emite en cada pisada (antes de sonar): p. ej. para dejar una onda en el agua.
+signal stepped(running: bool)
+
 @export var enabled := true
 @export var stream: AudioStream = preload("res://assets/audio/step.wav")
+## Pisada con agua (chapoteo). Se usa mientras `in_water` es true.
+@export var water_stream: AudioStream = preload("res://assets/audio/splash.wav")
+@export_range(-40.0, 6.0, 0.5) var water_volume_db := -10.0
 ## Pares de huesos. Cada par dispara sus propios pasos.
 @export var bone_pairs: Array[PackedStringArray] = [PackedStringArray(["foot.l", "foot.r"])]
 ## true = AudioStreamPlayer3D posicionado en el personaje (NPCs, companeros);
@@ -34,8 +40,13 @@ extends Node
 ## Minimo entre dos pasos (filtra el jitter de los blends; un trote cruza pares rapido).
 @export_range(0.02, 0.5, 0.01) var min_interval := 0.15
 
+## Superficie actual: true = chapoteo. Lo fija el dueno (Wading).
+var in_water := false
+
 var _skeleton: Skeleton3D
 var _player: Node  # AudioStreamPlayer o AudioStreamPlayer3D
+var _dry: AudioStreamRandomizer
+var _wet: AudioStreamRandomizer
 var _pairs: Array[PackedInt32Array] = []
 var _signs: PackedInt32Array
 var _since_last := INF
@@ -58,13 +69,12 @@ func setup(skeleton: Skeleton3D) -> void:
 	if _pairs.is_empty():
 		return
 	_skeleton = skeleton
-	var randomizer := AudioStreamRandomizer.new()
-	randomizer.add_stream(0, stream)
-	randomizer.random_pitch = random_pitch
-	randomizer.random_volume_offset_db = random_volume_db
+	_dry = _randomizer(stream)
+	if water_stream:
+		_wet = _randomizer(water_stream)
 	_player = AudioStreamPlayer3D.new() if spatial else AudioStreamPlayer.new()
 	_player.name = "Audio"
-	_player.stream = randomizer
+	_player.stream = _dry
 	_player.max_polyphony = 4
 	add_child(_player)
 
@@ -91,9 +101,20 @@ func tick(delta: float, locomotion: bool, running: bool) -> void:
 			_signs[i] = s
 
 
+func _randomizer(s: AudioStream) -> AudioStreamRandomizer:
+	var r := AudioStreamRandomizer.new()
+	r.add_stream(0, s)
+	r.random_pitch = random_pitch
+	r.random_volume_offset_db = random_volume_db
+	return r
+
+
 func _play(running: bool) -> void:
 	if not is_instance_valid(_player):
 		return
-	_player.volume_db = volume_db + (run_volume_boost_db if running else 0.0)
+	stepped.emit(running)
+	var wet := in_water and _wet != null
+	_player.stream = _wet if wet else _dry
+	_player.volume_db = (water_volume_db if wet else volume_db) + (run_volume_boost_db if running else 0.0)
 	_player.pitch_scale = pitch * (run_pitch_mul if running else 1.0)
 	_player.play()

@@ -14,7 +14,7 @@ Orden propuesto por impacto visual por hora de trabajo. Marca lo hecho.
       Manchas verdes sobre el suelo claro por ruido en el shader, más densas lejos de los
       caminos, con snap a paleta.
 - [x] **Lago.** `Lake` sobre `Path3D`: agua oscura, ondas, espuma en la orilla, colisión
-      de vadeo, sin árboles dentro.
+      de vadeo, sin árboles dentro. Vadeo: el personaje se hunde, frena y chapotea.
 - [ ] **Orilla del lago:** juncos con un `ScatterArea` y el shader de hierba estirado, rocas.
 - [ ] **Oscuridad en los bordes.** Niebla por distancia oscura en el `Environment` o
       vignette fuerte en el post del `RetroRenderer`.

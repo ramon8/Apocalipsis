@@ -16,6 +16,7 @@ godot --headless --path . --quit-after 3000 tests/player_actions_test.tscn
 godot --headless --path . --quit-after 3000 tests/interaction_zone_test.tscn
 godot --headless --path . --quit-after 3000 tests/dialogue_test.tscn
 godot --headless --path . --quit-after 3000 tests/fence_gate_test.tscn
+godot --headless --path . --quit-after 3000 tests/wading_test.tscn
 ```
 
 - Los tests son escenas (`tests/*.tscn` con un script `extends Node`) para que carguen los
@@ -293,6 +294,16 @@ colorea somero/profundo por distancia, anima ondas y pone espuma en bandas junto
 orilla. Comparte el interruptor `pixel_art` con el suelo. Colisión: cajas a lo largo de la
 orilla retranqueadas `wade_distance` (`Geometry2D.offset_polygon`). Sin rocas ni juncos
 todavía.
+
+**Vadeo.** `Lake.depth_at(xz)` devuelve metros de agua: 0 fuera y, dentro, sube linealmente
+con la distancia a la orilla hasta `wade_depth` en `wade_distance`. El componente `Wading`
+del jugador (`components/wading.gd`, nodo `Wading` en `player.tscn`) pregunta a los lagos
+del grupo `lake` cada frame de física: hunde el modelo esa profundidad (la física sigue
+sobre el suelo plano), multiplica la velocidad hasta `wade_speed_factor`, pone
+`FootstepAudio.in_water` (pasos con `water_stream`, `assets/audio/splash.wav`, generado
+procedural) y deja una `SplashRipple` (quad con `ripple.gdshader`) en cada pisada y cada
+`idle_ripple_interval` segundos parado. Para que otro personaje vadee, dale un `Wading` y
+llama a `setup()` + `tick()` como hace el jugador.
 
 **Nodos que se recolocan solos.** No uses `set_notify_transform` en un hijo que su padre
 recoloca al cargar (`FenceGate` lo hacía): el motor lanza `Condition "p_elem->_root !=
