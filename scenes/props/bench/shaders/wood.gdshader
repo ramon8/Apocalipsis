@@ -33,9 +33,11 @@ const vec3 PALETTE[8] = {
 
 varying vec3 v_pos;
 varying vec3 v_normal;
+// Semilla por instancia (MultiMesh: custom_data.x); 0 en mallas normales.
+varying float v_seed;
 
 float hash2(vec2 p) {
-	return fract(sin(dot(p, vec2(127.1, 311.7)) + seed_offset) * 43758.5453);
+	return fract(sin(dot(p, vec2(127.1, 311.7)) + seed_offset + v_seed) * 43758.5453);
 }
 
 float vnoise(vec2 p) {
@@ -61,6 +63,7 @@ vec3 snap_palette(vec3 c) {
 void vertex() {
 	v_pos = VERTEX;
 	v_normal = NORMAL;
+	v_seed = INSTANCE_CUSTOM.x;
 }
 
 void fragment() {

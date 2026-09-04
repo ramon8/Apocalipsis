@@ -3,7 +3,8 @@ extends Node
 ##   godot --path . tests/screenshot.tscn
 ## Ruta de salida: variable de entorno SCREENSHOT_PATH, o user://screenshot.png.
 ## Opcional: SCREENSHOT_POS="x,z" para colocar al jugador (y la camara) en ese punto,
-## SCREENSHOT_FRAMES para esperar mas frames (por defecto 40).
+## SCREENSHOT_FRAMES para esperar mas frames (por defecto 40), SCREENSHOT_ZOOM para el zoom
+## de la camara (menor = mas cerca).
 
 func _ready() -> void:
 	var main: Node = load("res://scenes/main.tscn").instantiate()
@@ -15,6 +16,11 @@ func _ready() -> void:
 		var player := get_tree().get_first_node_in_group("player") as Node3D
 		if player and parts.size() == 2:
 			player.global_position = Vector3(float(parts[0]), player.global_position.y, float(parts[1]))
+	var zoom_s := OS.get_environment("SCREENSHOT_ZOOM")
+	if zoom_s != "":
+		var rig := get_tree().get_first_node_in_group("camera_rig")
+		if rig:
+			rig.set("zoom", float(zoom_s))
 	for i in frames:
 		await get_tree().process_frame
 	var mask_path := OS.get_environment("SCREENSHOT_MASK")

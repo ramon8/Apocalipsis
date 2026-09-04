@@ -22,7 +22,7 @@ Orden propuesto por impacto visual por hora de trabajo. Marca lo hecho.
 
 ## 2. Estructuras procedurales
 
-- [ ] **Vallas por `Path3D`.** Postes cada N metros, dos travesaños, madera con el shader
+- [x] **Vallas por `Path3D`.** Postes cada N metros, dos travesaños, madera con el shader
       del banco, colisión por segmento. Cierra corrales dibujando la curva.
 - [ ] **Campo de cultivo.** `ScatterArea` rectangular en rejilla con un tallo de trigo y el
       shader de viento de los arbustos.

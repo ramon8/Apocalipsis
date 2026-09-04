@@ -260,14 +260,23 @@ repinta solo al mover puntos en el editor.
   en matas), `grass_path_margin` (cuánto se aparta del camino). La hierba de blades del
   `ScatterWorld` está desactivada (`grass_enabled = false`): metía ruido.
 
+**Vallas.** `Fence` (`scenes/props/fence/fence.gd`, escena `fence.tscn`) es un `Path3D`:
+dibuja la curva y se reconstruye sola con postes cada `post_spacing`, `rails` travesaños
+entre poste y poste, y colisión por tramo. `curve.closed = true` para un corral. Postes y
+travesaños son un `MultiMesh` cada uno con el shader de madera del banco, que ahora acepta
+una semilla por instancia en `INSTANCE_CUSTOM.x`. Para escalar instancias de un
+`MultiMesh` a lo largo de su eje usa `basis * Basis.from_scale(...)`: `Basis.scaled()`
+escala en ejes globales y estira en la dirección equivocada.
+
 **Capturas de pantalla.** Headless no compila shaders. Para validar un shader o ver el
 resultado sin abrir el editor:
 
 ```
-SCREENSHOT_PATH=out.png SCREENSHOT_POS="5,-13" godot --path . --resolution 1280x720 --quit-after 500 tests/screenshot.tscn
+SCREENSHOT_PATH=out.png SCREENSHOT_POS="5,-13" SCREENSHOT_ZOOM=14 godot --path . --resolution 1280x720 --quit-after 500 tests/screenshot.tscn
 ```
 
-`SCREENSHOT_POS` coloca al jugador (y la cámara) en ese XZ; `SCREENSHOT_MASK=mask.png`
+`SCREENSHOT_POS` coloca al jugador (y la cámara) en ese XZ, `SCREENSHOT_ZOOM` acerca la
+cámara (menor = más cerca, 55 es el valor de juego); `SCREENSHOT_MASK=mask.png`
 vuelca además la máscara de caminos. Abre una ventana unos segundos.
 
 ## Interiores
