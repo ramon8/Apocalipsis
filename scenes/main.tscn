@@ -9,8 +9,6 @@
 [ext_resource type="PackedScene" uid="uid://c7xgbnlulgfl4" path="res://scenes/environment/wind/wind.tscn" id="7_wind"]
 [ext_resource type="Material" uid="uid://lxwkkoxjmin0" path="res://scenes/environment/ground/ground_material.tres" id="9_ground"]
 [ext_resource type="PackedScene" uid="uid://4ma6b4bqmghe" path="res://scenes/props/campfire/campfire.tscn" id="11_trceg"]
-[ext_resource type="Resource" path="res://scenes/props/crops/types/pumpkin.tres" id="12_og1vs"]
-[ext_resource type="Resource" path="res://scenes/props/crops/types/tomato.tres" id="13_2wyq8"]
 [ext_resource type="PackedScene" path="res://scenes/companion/dog.tscn" id="13_dog"]
 [ext_resource type="PackedScene" path="res://scenes/props/molino/molino.tscn" id="13_trceg"]
 [ext_resource type="PackedScene" path="res://scenes/environment/day_night/day_night.tscn" id="14_cycle"]
@@ -45,17 +43,9 @@ _data = {
 }
 point_count = 18
 
-[sub_resource type="Curve3D" id="Curve3D_pen"]
-closed = true
-_data = {
-"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 1, 0, 0, 0, 0, 0, 0, 11, 0, -6, 0, 0, 0, 0, 0, 0, 4, 0, -9, 0, 0, 0, 0, 0, 0, -3, 0, -5),
-"tilts": PackedFloat32Array(0, 0, 0, 0, 0)
-}
-point_count = 5
-
 [sub_resource type="Curve3D" id="Curve3D_lake"]
 _data = {
-"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 14.74, 0, 0, 0, 0, 0, 0, 0, 0, 13.12, 0, 6.55, 0, 0, 0, 0, 0, 0, 4.75, 0, 10.05, 0, 0, 0, 0, 0, 0, -5.1, 0, 10.79, 0, 0, 0, 0, 0, 0, -13.43, 0, 6.71, 0, 0, 0, 0, 0, 0, -13.91, 0, 0, 0, 0, 0, 0, 0, 0, -11.05, 0, -5.52, 0, 0, 0, 0, 0, 0, -5.44, 0, -11.52, 0, 0, 0, 0, 0, 0, 4.59, 0, -9.71, 0, 0, 0, 0, 0, 0, 11.91, 0, -5.95),
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 14.74, 0, 0, 0, 0, 0, 0, 0, 0, 13.12, 0, 6.55, 0, 0, 0, 0, 0, 0, 4.75, 0, 10.05, 0, 0, 0, 0, 0, 0, -5.1, 0, 10.79, 0, 0, 0, 0, 0, 0, -13.43, 0, 6.71, 0, 0, 0, 0, 0, 0, -13.91, 0, 0, 0, 0, 0, 0, 0, 0, -11.05, 0, -5.52, 0, 0, 0, 0, 0, 0, -5.44, 0, -11.52, 0, 0, 0, 0, 0, 0, 4.266611, 1.9073486e-06, -11.433792, 0, 0, 0, 0, 0, 0, 11.91, 0, -5.95),
 "tilts": PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 }
 point_count = 10
@@ -69,7 +59,7 @@ point_count = 3
 
 [sub_resource type="Curve3D" id="Curve3D_field"]
 _data = {
-"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 0, 11, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 7),
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 0.92500687, 3.8146973e-06, -19.920559, 0, 0, 0, 0, 0, 0, 19.75357, 0, -17.702797, 0, 0, 0, 0, 0, 0, 20.220379, 0, 9.301117, 0, 0, 0, 0, 0, 0, 0, 0, 7),
 "tilts": PackedFloat32Array(0, 0, 0, 0)
 }
 point_count = 4
@@ -101,12 +91,19 @@ size = Vector2(1000, 1000)
 [sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
 size = Vector3(1000, 1, 1000)
 
+[sub_resource type="Curve3D" id="Curve3D_2bd0u"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -7.6000443, 0.30448914, -17.6921, 0, 0, 0, 0, 0, 0, -7.076088, 1.050003, -24.99033, 0, 0, 0, 0, 0, 0, 14.382843, 1.050003, -21.93133, 0, 0, 0, 0, 0, 0, 13.404388, 0.75349426, 6.225685, 0, 0, 0, 0, 0, 0, -6.8913937, 0, 4.5861015, 0, 0, 0, 0, 0, 0, -7.531101, -3.8146973e-06, -3.4439735),
+"tilts": PackedFloat32Array(0, 0, 0, 0, 0, 0)
+}
+point_count = 6
+
 [node name="Main" type="Node" unique_id=1477144514]
 
 [node name="World" type="Node3D" parent="." unique_id=863254421]
 
 [node name="DayNightCycle" parent="World" unique_id=417142772 node_paths=PackedStringArray("sun", "world_environment") instance=ExtResource("14_cycle")]
-time_of_day = 9.206268108461233
+time_of_day = 9.1
 day_length_minutes = 4.0
 advance_time = false
 sun = NodePath("../Sun")
@@ -144,21 +141,6 @@ edge_spread = 1.15
 curve = SubResource("Curve3D_village")
 script = ExtResource("19_path")
 
-[node name="Fence" parent="World" unique_id=566937611 instance=ExtResource("20_fence")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, -24)
-curve = SubResource("Curve3D_pen")
-wood_light = Color(0.10980392, 0.0627451, 0.03529412, 1)
-wood_dark = Color(0.10980392, 0.0627451, 0.03529412, 1)
-bark_color = Color(0.10980392, 0.0627451, 0.03529412, 1)
-
-[node name="Gate" type="Node3D" parent="World/Fence" unique_id=467862174]
-transform = Transform3D(0.99388367, 0, 0.11043232, 0, 1, 0, 0.11043232, 0, -0.99388367, 5.009833, 0, 0.5566481)
-script = ExtResource("21_gate")
-
-[node name="Gate2" type="Node3D" parent="World/Fence" unique_id=1810110556]
-transform = Transform3D(-0.86824375, 0, 0.49613792, 0, 1, 0, 0.49613792, 0, 0.86824375, 1.6871319, 0, -7.678361)
-script = ExtResource("21_gate")
-
 [node name="Lake" parent="World" unique_id=151334420 instance=ExtResource("22_lake")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.743408, 0, 0.5237999)
 curve = SubResource("Curve3D_lake")
@@ -170,26 +152,19 @@ water_alpha = 1.0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 0, 1)
 curve = SubResource("Curve3D_dock")
 
-[node name="WheatField" parent="World" unique_id=210386053 instance=ExtResource("24_field")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, -33)
-curve = SubResource("Curve3D_field")
-crop = ExtResource("12_og1vs")
-
 [node name="WheatField2" parent="World" unique_id=995991521 instance=ExtResource("24_field")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, -42.05855)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -42.937103, 0, -35.177803)
 curve = SubResource("Curve3D_field")
-
-[node name="WheatField3" parent="World" unique_id=678838222 instance=ExtResource("24_field")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, -52.579506)
-curve = SubResource("Curve3D_field")
-crop = ExtResource("13_2wyq8")
+growth = 0.69
+plant_scale = 3.0
+width_scale = 1.4
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="World" unique_id=235434014]
 environment = SubResource("Environment_env")
 
 [node name="Sun" type="DirectionalLight3D" parent="World" unique_id=593195790]
-transform = Transform3D(0.9746152, -0.116596915, 0.19112718, 0, 0.85368544, 0.52078897, -0.22388488, -0.50756943, 0.83201456, 0, 10, 0)
-light_color = Color(1, 0.875078, 0.702085, 1)
+transform = Transform3D(0.97029537, -0.12205389, 0.2088756, 0, 0.8634016, 0.5045173, -0.24192181, -0.4895314, 0.83775425, 0, 10, 0)
+light_color = Color(1, 0.8724812, 0.6966917, 1)
 light_energy = 1.2
 shadow_enabled = true
 shadow_blur = 0.0
@@ -215,7 +190,7 @@ gust_travel_speed = 4.0
 local_direction_variation_deg = 25.0
 
 [node name="Player" parent="World" unique_id=872944500 instance=ExtResource("2_player")]
-transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, 0.0301857, 0, -19.4364)
+transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, 63.189224, 0, -3.1609097)
 walk_speed = 2.0
 run_speed = 3.8
 acceleration = 24.0
@@ -279,6 +254,15 @@ transform = Transform3D(0.99926573, 0, 0.0383123, 0, 1, 0, -0.0383123, 0, 0.9992
 
 [node name="Heno8" parent="World/Heno9" unique_id=1045822516 instance=ExtResource("16_jbj1t")]
 transform = Transform3D(0.6081571, -0.7934742, 0.023317017, 0.7928915, 0.60860395, 0.03039982, -0.03831231, 0, 0.99926585, -33.187145, 0.67315996, -10.824438)
+
+[node name="Fence" parent="World" unique_id=439386756 instance=ExtResource("20_fence")]
+transform = Transform3D(-0.99997884, 0, 0.006511748, 0, 1, 0, -0.006511748, 0, -0.99997884, -29.158829, 0, -49.564133)
+curve = SubResource("Curve3D_2bd0u")
+
+[node name="FenceGate" type="Node3D" parent="World/Fence" unique_id=942708825]
+transform = Transform3D(-0.034716524, 0, 0.9993972, 0, 1, 0, 0.9993972, 0, 0.034716524, 13.913433, 0, -8.423119)
+script = ExtResource("21_gate")
+metadata/_custom_type_script = "uid://dhteqns123r3b"
 
 [node name="Npc" parent="." unique_id=1532924274 instance=ExtResource("17_muem4")]
 transform = Transform3D(-0.42931247, 0, -0.90315604, 0, 1, 0, 0.90315604, 0, -0.42931247, -24.090452, 0.08111334, -19.770689)
