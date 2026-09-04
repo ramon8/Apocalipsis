@@ -4,8 +4,10 @@ extends Path3D
 ## Lago: dibuja la orilla con la curva (cerrada) y se genera solo. Un plano cubre el bbox de
 ## la curva; la forma y la distancia a la orilla van en una mascara pintada en un
 ## SubViewport (relleno + anillos de distancia) que el shader del agua usa para recortar,
-## colorear por profundidad y poner espuma. La orilla lleva cajas de colision retranqueadas
-## `wade_distance` metros hacia dentro (se puede vadear el borde, no nadar).
+## colorear por profundidad y poner espuma. La franja somera (`shallow_width`) es la unica
+## zona por la que se puede andar: se vadea hundiendose hasta `wade_depth`, y donde empieza
+## el agua profunda hay cajas de colision. Un charco es un lago cuya franja somera lo cubre
+## entero: sin agua profunda, sin colision.
 ## Se anade al grupo "scatter_exclusion": no crecen arboles dentro. Y al grupo "lake":
 ## el componente Wading del jugador pregunta depth_at() para hundirse y chapotear.
 
@@ -50,10 +52,13 @@ const WATER_SHADER := preload("res://scenes/environment/lake/shaders/water.gdsha
 	set(v):
 		foam_color = v
 		_set_param("foam_color", v)
-@export_range(0.1, 10.0, 0.1) var shallow_width := 2.5:
+## Ancho de la franja somera desde la orilla (m): color claro, vadeable, con profundidad
+## creciente. Mas alla, agua profunda con colision. Si cubre todo el lago, es un charco.
+@export_range(0.1, 30.0, 0.1) var shallow_width := 2.5:
 	set(v):
 		shallow_width = v
 		_set_param("shallow_width", v)
+		_rebuild()
 @export_range(0.0, 5.0, 0.1) var foam_width := 1.6:
 	set(v):
 		foam_width = v
@@ -72,15 +77,10 @@ const WATER_SHADER := preload("res://scenes/environment/lake/shaders/water.gdsha
 	set(v):
 		collision_enabled = v
 		_rebuild()
-## Metros de orilla que se pueden vadear antes de chocar con el agua.
-@export_range(0.0, 5.0, 0.1) var wade_distance := 0.8:
-	set(v):
-		wade_distance = v
-		_rebuild()
 
 @export_group("Vadeo")
-## Cuanto se hunde el personaje (m) al llegar al limite vadeable; crece linealmente desde
-## la orilla.
+## Cuanto se hunde el personaje (m) al final de la franja somera; crece linealmente desde
+## la orilla. En un charco, la profundidad maxima se alcanza en su punto mas interior.
 @export_range(0.0, 1.0, 0.01) var wade_depth := 0.3
 ## Velocidad del personaje con el agua a la profundidad maxima (1 = no frena).
 @export_range(0.1, 1.0, 0.05) var wade_speed_factor := 0.55
@@ -108,7 +108,7 @@ func _enter_tree() -> void:
 
 
 ## Profundidad del agua (m) bajo un punto del mundo: 0 fuera del lago, y dentro crece con la
-## distancia a la orilla hasta `wade_depth` en `wade_distance` (mas alla no se puede pasar).
+## distancia a la orilla hasta `wade_depth` al final de la franja somera (`shallow_width`).
 func depth_at(world_xz: Vector2) -> float:
 	if curve == null:
 		return 0.0
@@ -117,7 +117,7 @@ func depth_at(world_xz: Vector2) -> float:
 	if not _clearance.is_inside(world_xz):
 		return 0.0
 	var d := _clearance.distance_to_line(world_xz)
-	return wade_depth * clampf(d / maxf(wade_distance, 0.05), 0.0, 1.0)
+	return wade_depth * clampf(d / maxf(shallow_width, 0.05), 0.0, 1.0)
 
 
 func clearance_at(world_xz: Vector2) -> float:
@@ -239,13 +239,16 @@ func _build_mesh(bbox: Rect2) -> void:
 	add_child(_mesh)
 
 
-## Cajas a lo largo de la orilla, retranqueadas hacia dentro `wade_distance`.
+## Cajas donde termina la franja somera: la orilla retranqueada `shallow_width` hacia
+## dentro. Si el retranqueo no deja nada (charco), no hay colision.
 func _build_collision(pts: PackedVector2Array) -> void:
+	var inner: Array[PackedVector2Array] = Geometry2D.offset_polygon(pts, -shallow_width, Geometry2D.JOIN_ROUND)
+	if inner.is_empty():
+		return
 	_body = StaticBody3D.new()
 	_body.name = "ShoreCollision"
 	_body.collision_layer = 1
 	_body.collision_mask = 0
-	var inner: Array[PackedVector2Array] = Geometry2D.offset_polygon(pts, -wade_distance, Geometry2D.JOIN_ROUND)
 	for poly in inner:
 		for i in poly.size():
 			var a := poly[i]

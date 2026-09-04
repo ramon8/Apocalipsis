@@ -15,7 +15,7 @@ signal stepped(running: bool)
 @export var stream: AudioStream = preload("res://assets/audio/step.wav")
 ## Pisada con agua (chapoteo). Se usa mientras `in_water` es true.
 @export var water_stream: AudioStream = preload("res://assets/audio/splash.wav")
-@export_range(-40.0, 6.0, 0.5) var water_volume_db := -10.0
+@export_range(-40.0, 6.0, 0.5) var water_volume_db := -15.0
 ## Pares de huesos. Cada par dispara sus propios pasos.
 @export var bone_pairs: Array[PackedStringArray] = [PackedStringArray(["foot.l", "foot.r"])]
 ## true = AudioStreamPlayer3D posicionado en el personaje (NPCs, companeros);

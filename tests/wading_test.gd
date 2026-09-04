@@ -17,7 +17,7 @@ func _run() -> void:
 		curve.add_point(p)
 	curve.closed = true
 	lake.curve = curve
-	lake.wade_distance = 1.0
+	lake.shallow_width = 1.0
 	lake.wade_depth = 0.3
 	lake.wade_speed_factor = 0.5
 	add_child(lake)
@@ -30,6 +30,23 @@ func _run() -> void:
 	_check(is_equal_approx(lake.depth_at(Vector2(0, -9.5)), 0.15), "a 0.5 m de la orilla: mitad de wade_depth")
 	_check(is_equal_approx(lake.depth_at(Vector2(0, 0)), 0.3), "en el centro: wade_depth (tope)")
 	_check(lake.clearance_at(Vector2(0, 0)) < 0.0, "el interior sigue vetado para la dispersion")
+	_check(lake.get_node_or_null("ShoreCollision") != null, "lago con agua profunda: hay colision")
+
+	# Charco: la franja somera cubre todo -> sin colision, profundidad maxima en el centro.
+	var puddle := Lake.new()
+	var pc := Curve3D.new()
+	for p in [Vector3(-2, 0, -2), Vector3(2, 0, -2), Vector3(2, 0, 2), Vector3(-2, 0, 2)]:
+		pc.add_point(p)
+	pc.closed = true
+	puddle.curve = pc
+	puddle.shallow_width = 3.0
+	puddle.wade_depth = 0.1
+	puddle.position = Vector3(40, 0, 0)
+	add_child(puddle)
+	await _frames(2)
+	_check(puddle.get_node_or_null("ShoreCollision") == null, "charco: sin colision")
+	_check(is_equal_approx(puddle.depth_at(Vector2(40, 0)), 0.1 * 2.0 / 3.0), "charco: profundidad por distancia a la orilla")
+	puddle.queue_free()
 
 	var wading: Wading = player.get_node("Wading")
 	wading.idle_ripple_interval = 0.0  # sin ondas automaticas: el test cuenta nodos

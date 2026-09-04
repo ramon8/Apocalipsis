@@ -291,12 +291,13 @@ cerrado: la curva es la orilla. Un plano cubre el bbox y un `SubViewport` pinta 
 de forma: R = distancia a la orilla en `mask_range` metros (relleno + `distance_rings`
 anillos), G = interior (relleno sumado con blend ADD). `water.gdshader` descarta fuera,
 colorea somero/profundo por distancia, anima ondas y pone espuma en bandas junto a la
-orilla. Comparte el interruptor `pixel_art` con el suelo. Colisión: cajas a lo largo de la
-orilla retranqueadas `wade_distance` (`Geometry2D.offset_polygon`). Sin rocas ni juncos
-todavía.
+orilla. Comparte el interruptor `pixel_art` con el suelo. La franja somera
+(`shallow_width`) es a la vez el color claro, la zona vadeable y la que tiene profundidad;
+donde termina hay cajas de colisión (`Geometry2D.offset_polygon`). Si la franja cubre todo
+el lago (charco) no hay colisión. Sin rocas ni juncos todavía.
 
 **Vadeo.** `Lake.depth_at(xz)` devuelve metros de agua: 0 fuera y, dentro, sube linealmente
-con la distancia a la orilla hasta `wade_depth` en `wade_distance`. El componente `Wading`
+con la distancia a la orilla hasta `wade_depth` al final de `shallow_width`. El componente `Wading`
 del jugador (`components/wading.gd`, nodo `Wading` en `player.tscn`) pregunta a los lagos
 del grupo `lake` cada frame de física: hunde el modelo esa profundidad (la física sigue
 sobre el suelo plano), multiplica la velocidad hasta `wade_speed_factor`, pone
