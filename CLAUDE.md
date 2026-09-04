@@ -302,8 +302,12 @@ del jugador (`components/wading.gd`, nodo `Wading` en `player.tscn`) pregunta a 
 del grupo `lake` cada frame de física: hunde el modelo esa profundidad (la física sigue
 sobre el suelo plano), multiplica la velocidad hasta `wade_speed_factor`, pone
 `FootstepAudio.in_water` (pasos con `water_stream`, `assets/audio/splash.wav`, generado
-procedural) y deja una `SplashRipple` (quad con `ripple.gdshader`) en cada pisada y cada
-`idle_ripple_interval` segundos parado. Para que otro personaje vadee, dale un `Wading` y
+procedural). Las ondas concéntricas (`SplashRipple`) existen pero están apagadas
+(`ripples_enabled`): las sustituye la **espuma de contacto** del shader del agua, que lee la
+textura de profundidad, busca en un disco de `contact_radius_px` píxeles geometría opaca
+cerca de la línea de flotación y pinta espuma animada a menos de `contact_halo` metros
+horizontales de ella. Vale para cualquier objeto que corte el agua sin avisar a nadie.
+`contact_width` debe quedar por debajo del hueco entre superficie y suelo (0.115 m). Para que otro personaje vadee, dale un `Wading` y
 llama a `setup()` + `tick()` como hace el jugador.
 
 **Nodos que se recolocan solos.** No uses `set_notify_transform` en un hijo que su padre

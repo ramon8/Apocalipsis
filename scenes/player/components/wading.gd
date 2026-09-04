@@ -6,6 +6,9 @@ extends Node
 ## pisada deja una onda sobre el agua. El dueno llama a setup() y tick(delta).
 
 @export var enabled := true
+## Ondas concentricas en cada pisada. Apagadas por defecto: el agua ya pinta espuma de
+## contacto alrededor de lo que la corta (contact_foam en water.gdshader).
+@export var ripples_enabled := false
 ## Suavizado del hundimiento (mas = mas lento).
 @export_range(1.0, 30.0, 0.5) var sink_smoothing := 10.0
 ## Tamano de la onda de cada pisada (m) y su duracion (s).
@@ -78,7 +81,7 @@ func tick(delta: float) -> void:
 
 ## Onda en la posicion del dueno (la llama el dueno en cada pisada dentro del agua).
 func ripple(scale := 1.0) -> void:
-	if not in_water() or _body == null:
+	if not ripples_enabled or not in_water() or _body == null:
 		return
 	var pos := _body.global_position
 	pos.y = _current_lake.global_position.y + _current_lake.water_level + 0.02

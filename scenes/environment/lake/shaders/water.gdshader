@@ -7,6 +7,7 @@ shader_type spatial;
 render_mode blend_mix, depth_draw_opaque, cull_back, diffuse_lambert, specular_disabled;
 
 uniform sampler2D mask : hint_default_black, filter_linear, repeat_disable;
+uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
 // Metros que cubre R = 1 en la mascara.
 uniform float mask_range = 4.0;
 
@@ -28,6 +29,22 @@ uniform float ripple_scale : hint_range(0.5, 20.0, 0.5) = 3.0;
 uniform float ripple_strength : hint_range(0.0, 0.6, 0.01) = 0.18;
 uniform float ripple_speed : hint_range(0.0, 2.0, 0.05) = 0.25;
 uniform vec2 ripple_direction = vec2(1.0, 0.4);
+
+group_uniforms contact_foam;
+// Espuma alrededor de lo que corta la superficie (piernas, postes, cacharros). Se buscan
+// en pantalla, en un disco de `contact_radius_px`, puntos opacos cercanos a la linea de
+// flotacion (hasta `contact_width` m por debajo y `contact_above` por encima) y la espuma
+// se pinta si el agua esta a menos de `contact_halo` metros (horizontales) de ese punto.
+// El fondo queda a 0.115 m bajo la superficie: contact_width debe ser menor.
+uniform bool contact_foam_enabled = true;
+uniform float contact_width : hint_range(0.01, 0.5, 0.005) = 0.09;
+uniform float contact_above : hint_range(0.0, 2.0, 0.05) = 0.6;
+uniform float contact_halo : hint_range(0.05, 2.0, 0.05) = 0.45;
+uniform float contact_radius_px : hint_range(0.0, 24.0, 0.5) = 10.0;
+uniform float contact_speed : hint_range(0.0, 4.0, 0.05) = 1.2;
+// Detalle del borde (m) y cuanto lo rompe el ruido.
+uniform float contact_noise_scale : hint_range(0.05, 2.0, 0.05) = 0.35;
+uniform float contact_break : hint_range(0.0, 1.0, 0.05) = 0.5;
 
 group_uniforms foam;
 uniform vec4 foam_color : source_color = vec4(0.75, 0.76, 0.53, 1.0);
@@ -101,6 +118,45 @@ void fragment() {
 		float fade = 1.0 - smoothstep(foam_width * 0.5, foam_width, d);
 		col = mix(col, foam_color.rgb, line * keep * fade);
 	}
+
+	// Espuma de contacto: distancia vertical (mundo) entre la superficie y lo opaco de debajo.
+	float contact = 0.0;
+	if (contact_foam_enabled) {
+		vec2 px = 1.0 / VIEWPORT_SIZE;
+		float best = 1.0;  // 0 = pegado al objeto, 1 = fuera del halo
+		for (int ring_i = 0; ring_i <= 3; ring_i++) {
+			float rr = contact_radius_px * float(ring_i) / 3.0;
+			int dirs = ring_i == 0 ? 1 : 8;
+			for (int k = 0; k < 8; k++) {
+				if (k >= dirs) {
+					break;
+				}
+				float ang = float(k) * 0.7853982 + float(ring_i) * 0.3927;
+				vec2 uv = SCREEN_UV + vec2(cos(ang), sin(ang)) * rr * px;
+				float depth_raw = texture(depth_tex, uv).r;
+				vec3 ndc = vec3(uv * 2.0 - 1.0, depth_raw);
+				vec4 view = INV_PROJECTION_MATRIX * vec4(ndc, 1.0);
+				view.xyz /= view.w;
+				vec3 scene_world = (INV_VIEW_MATRIX * vec4(view.xyz, 1.0)).xyz;
+				float gap = world_pos.y - scene_world.y;  // >0: el punto opaco esta bajo el agua
+				if (gap > -contact_above && gap < contact_width) {
+					float hd = length(world_pos.xz - scene_world.xz) / contact_halo;
+					best = min(best, hd);
+				}
+			}
+		}
+		if (best < 1.0) {
+			float f = best;  // 0 en el contorno, ->1 al borde del halo
+			float n = gnoise(p / contact_noise_scale + vec2(TIME * contact_speed, -TIME * contact_speed * 0.6));
+			float n2 = gnoise(p / (contact_noise_scale * 2.5) + 19.0 - TIME * contact_speed * 0.3);
+			// Franja pegada al contorno, deshilachada por ruido, y un anillo exterior que late.
+			float core = step(f, 0.45 * (1.0 - contact_break) + contact_break * n);
+			float ring_pos = 0.7 + 0.18 * sin(TIME * 2.5 + n2 * 6.0);
+			float ring = step(abs(f - ring_pos), 0.07) * step(0.35, n);
+			contact = max(core, ring);
+		}
+	}
+	col = mix(col, foam_color.rgb, contact);
 
 	ALBEDO = col;
 	ALPHA = water_alpha * (edge_fade > 0.0 ? smoothstep(0.0, edge_fade, d) : 1.0);

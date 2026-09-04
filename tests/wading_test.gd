@@ -50,6 +50,7 @@ func _run() -> void:
 
 	var wading: Wading = player.get_node("Wading")
 	wading.idle_ripple_interval = 0.0  # sin ondas automaticas: el test cuenta nodos
+	wading.ripples_enabled = true
 	var base_y: float = player.get_node("Model").position.y
 	_check(not wading.in_water(), "seco al empezar")
 
