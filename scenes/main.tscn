@@ -9,6 +9,8 @@
 [ext_resource type="PackedScene" uid="uid://c7xgbnlulgfl4" path="res://scenes/environment/wind/wind.tscn" id="7_wind"]
 [ext_resource type="Material" uid="uid://lxwkkoxjmin0" path="res://scenes/environment/ground/ground_material.tres" id="9_ground"]
 [ext_resource type="PackedScene" uid="uid://4ma6b4bqmghe" path="res://scenes/props/campfire/campfire.tscn" id="11_trceg"]
+[ext_resource type="Resource" path="res://scenes/props/crops/types/pumpkin.tres" id="12_og1vs"]
+[ext_resource type="Resource" path="res://scenes/props/crops/types/tomato.tres" id="13_2wyq8"]
 [ext_resource type="PackedScene" path="res://scenes/companion/dog.tscn" id="13_dog"]
 [ext_resource type="PackedScene" path="res://scenes/props/molino/molino.tscn" id="13_trceg"]
 [ext_resource type="PackedScene" path="res://scenes/environment/day_night/day_night.tscn" id="14_cycle"]
@@ -65,6 +67,13 @@ _data = {
 }
 point_count = 3
 
+[sub_resource type="Curve3D" id="Curve3D_field"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 0, 11, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 7),
+"tilts": PackedFloat32Array(0, 0, 0, 0)
+}
+point_count = 4
+
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 sky_top_color = Color(0.25, 0.35, 0.55, 1)
 sky_horizon_color = Color(0.65, 0.7, 0.8, 1)
@@ -91,14 +100,6 @@ size = Vector2(1000, 1000)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
 size = Vector3(1000, 1, 1000)
-
-[sub_resource type="Curve3D" id="Curve3D_field"]
-_data = {
-"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 0, 11, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 7),
-"tilts": PackedFloat32Array(0, 0, 0, 0),
-"closed": true
-}
-point_count = 4
 
 [node name="Main" type="Node" unique_id=1477144514]
 
@@ -169,9 +170,19 @@ water_alpha = 1.0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 0, 1)
 curve = SubResource("Curve3D_dock")
 
-[node name="WheatField" parent="World" instance=ExtResource("24_field")]
+[node name="WheatField" parent="World" unique_id=210386053 instance=ExtResource("24_field")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, -33)
 curve = SubResource("Curve3D_field")
+crop = ExtResource("12_og1vs")
+
+[node name="WheatField2" parent="World" unique_id=995991521 instance=ExtResource("24_field")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, -42.05855)
+curve = SubResource("Curve3D_field")
+
+[node name="WheatField3" parent="World" unique_id=678838222 instance=ExtResource("24_field")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, -52.579506)
+curve = SubResource("Curve3D_field")
+crop = ExtResource("13_2wyq8")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="World" unique_id=235434014]
 environment = SubResource("Environment_env")

@@ -19,6 +19,18 @@ const WIND_SHADER := preload("res://scenes/props/tree/shaders/wind_cutout_lit.gd
 		growth = v
 		_apply_stage()
 
+@export_group("Tamano")
+## Multiplica la altura de las plantas (sobre la del cultivo y su fase). No regenera.
+@export_range(0.2, 3.0, 0.05) var plant_scale := 1.0:
+	set(v):
+		plant_scale = v
+		_apply_stage()
+## Multiplica solo el ancho (1 = el aspecto de la textura).
+@export_range(0.2, 3.0, 0.05) var width_scale := 1.0:
+	set(v):
+		width_scale = v
+		_apply_stage()
+
 @export_group("Siembra")
 ## 0 = usar los del cultivo.
 @export_range(0.0, 3.0, 0.05) var row_spacing := 0.0:
@@ -254,13 +266,14 @@ func _apply_stage() -> void:
 	if stage != _stage:
 		_stage = stage
 		_material.set_shader_parameter("albedo_tex", crop.stage_textures[stage])
-	var h := crop.stage_height(stage)
+	var h := crop.stage_height(stage) * plant_scale
 	var mm := _mmi.multimesh
 	var aabb := AABB()
 	for i in _plants.size():
 		var pl: Array = _plants[i]
 		var s: float = h * pl[2]
-		var basis := Basis.from_euler(Vector3(0.0, pl[1], 0.0)) * Basis.from_scale(Vector3(s * crop.width_ratio, s, s * crop.width_ratio))
+		var w: float = s * crop.width_ratio * width_scale
+		var basis := Basis.from_euler(Vector3(0.0, pl[1], 0.0)) * Basis.from_scale(Vector3(w, s, w))
 		var pos := Vector3(pl[0].x, 0.0, pl[0].y)
 		mm.set_instance_transform(i, Transform3D(basis, pos))
 		aabb = AABB(pos, Vector3.ZERO) if i == 0 else aabb.expand(pos)
