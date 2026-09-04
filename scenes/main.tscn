@@ -147,7 +147,6 @@ curve = SubResource("Curve3D_lake")
 pixel_art = true
 shallow_width = 3.4
 water_alpha = 1.0
-wade_depth = 0.8
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="World" unique_id=235434014]
 environment = SubResource("Environment_env")

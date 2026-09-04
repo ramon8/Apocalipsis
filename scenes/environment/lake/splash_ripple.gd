@@ -10,7 +10,8 @@ var _t := 0.0
 var _mat: ShaderMaterial
 
 
-static func spawn(parent: Node, world_pos: Vector3, size := 1.0, life := 0.9) -> SplashRipple:
+## `lake`: si se pasa, la onda se recorta con su mascara y no se dibuja sobre tierra.
+static func spawn(parent: Node, world_pos: Vector3, size := 1.0, life := 0.9, rings := 1, lake: Node = null) -> SplashRipple:
 	var r := SplashRipple.new()
 	r.duration = life
 	var quad := QuadMesh.new()
@@ -19,6 +20,12 @@ static func spawn(parent: Node, world_pos: Vector3, size := 1.0, life := 0.9) ->
 	r._mat = ShaderMaterial.new()
 	r._mat.shader = SHADER
 	r.material_override = r._mat
+	r._mat.set_shader_parameter("rings", float(rings))
+	if lake and lake.has_method("mask_texture") and lake.mask_texture():
+		r._mat.set_shader_parameter("clip_enabled", true)
+		r._mat.set_shader_parameter("clip_mask", lake.mask_texture())
+		var reg: Rect2 = lake.mask_region()
+		r._mat.set_shader_parameter("clip_region", Vector4(reg.position.x, reg.position.y, reg.size.x, reg.size.y))
 	r.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(r)
 	r.global_position = world_pos

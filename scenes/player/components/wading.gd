@@ -11,6 +11,8 @@ extends Node
 ## Tamano de la onda de cada pisada (m) y su duracion (s).
 @export_range(0.3, 3.0, 0.1) var ripple_size := 1.1
 @export_range(0.2, 3.0, 0.1) var ripple_life := 0.9
+## Aros por onda (1 o 2).
+@export_range(1, 3) var ripple_rings := 1
 ## Onda extra continua mientras esta parado con agua (cada tantos segundos; 0 = no).
 @export_range(0.0, 5.0, 0.1) var idle_ripple_interval := 1.6
 
@@ -23,6 +25,7 @@ var _model_base_y := 0.0
 var _idle_timer := 0.0
 var _lakes: Array[Node] = []
 var _lakes_refresh := 0.0
+var _current_lake: Node
 
 
 func setup(body: Node3D, model: Node3D, model_base_y: float) -> void:
@@ -53,10 +56,12 @@ func tick(delta: float) -> void:
 	var xz := Vector2(_body.global_position.x, _body.global_position.z)
 	depth = 0.0
 	_speed_factor = 1.0
+	_current_lake = null
 	for lake in _lakes:
 		var d: float = lake.depth_at(xz)
 		if d > depth:
 			depth = d
+			_current_lake = lake
 			_speed_factor = lerpf(1.0, lake.wade_speed_factor, clampf(d / maxf(lake.wade_depth, 0.001), 0.0, 1.0))
 	_sink = lerpf(_sink, depth, 1.0 - exp(-sink_smoothing * delta))
 	if _model:
@@ -76,12 +81,5 @@ func ripple(scale := 1.0) -> void:
 	if not in_water() or _body == null:
 		return
 	var pos := _body.global_position
-	pos.y = _water_level() + 0.02
-	SplashRipple.spawn(_body.get_parent(), pos, ripple_size * scale, ripple_life)
-
-
-func _water_level() -> float:
-	for lake in _lakes:
-		if lake.depth_at(Vector2(_body.global_position.x, _body.global_position.z)) > 0.0:
-			return lake.global_position.y + lake.water_level
-	return _body.global_position.y
+	pos.y = _current_lake.global_position.y + _current_lake.water_level + 0.02
+	SplashRipple.spawn(_body.get_parent(), pos, ripple_size * scale, ripple_life, ripple_rings, _current_lake)

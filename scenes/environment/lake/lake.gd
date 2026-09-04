@@ -95,6 +95,16 @@ var _viewport: SubViewport
 var _body: StaticBody3D
 var _clearance: CurveClearance
 var _building := false
+var _bbox := Rect2()  # bbox local de la mascara (m)
+
+
+## Mascara de forma (R distancia, G dentro) y region que cubre, en metros de mundo (XZ).
+func mask_texture() -> Texture2D:
+	return _viewport.get_texture() if _viewport else null
+
+
+func mask_region() -> Rect2:
+	return Rect2(_bbox.position + Vector2(global_position.x, global_position.z), _bbox.size)
 
 
 func _ready() -> void:
@@ -168,6 +178,7 @@ func _rebuild() -> void:
 		for p in pts:
 			bbox = bbox.expand(p)
 		bbox = bbox.grow(1.0)
+		_bbox = bbox
 		_build_mask(pts, bbox)
 		_build_mesh(bbox)
 		if collision_enabled:
