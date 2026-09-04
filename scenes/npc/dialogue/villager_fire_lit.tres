@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="DialogueEntry" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/npc/dialogue_entry.gd" id="1_entry"]
+
+[resource]
+script = ExtResource("1_entry")
+id = &"villager_fire_lit"
+lines = Array[String](["Could you fetch the *pot* from the *barn* and put it *on the fire*?"])
+requires = PackedStringArray("fire_lit")
+priority = 1

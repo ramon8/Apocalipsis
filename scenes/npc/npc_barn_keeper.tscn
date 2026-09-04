@@ -1,13 +1,15 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/npc/npc.tscn" id="1_base"]
+[ext_resource type="Script" path="res://scenes/npc/dialogue_entry.gd" id="2_entry"]
+[ext_resource type="Resource" path="res://scenes/npc/dialogue/barn_default.tres" id="3_default"]
+[ext_resource type="Resource" path="res://scenes/npc/dialogue/barn_pot_taken_reaction.tres" id="4_pot_react"]
+[ext_resource type="Resource" path="res://scenes/npc/dialogue/barn_after_pot_taken.tres" id="5_after"]
+[ext_resource type="Resource" path="res://scenes/npc/dialogue/barn_farewell.tres" id="6_farewell"]
 
 [node name="BarnKeeper" instance=ExtResource("1_base")]
 speaker_name = "Farmer"
+dialogue = Array[ExtResource("2_entry")]([ExtResource("3_default"), ExtResource("4_pot_react"), ExtResource("5_after"), ExtResource("6_farewell")])
 show_exclamation = false
-lines = Array[String](["Mind the hay, it's fresh.", "Been a rough season around here."])
-watch_campfire_enabled = false
-watch_pot_enabled = true
 voice_pitch = 0.85
 sit_on_floor = true
-farewell_lines = Array[String](["...Sorry about that."])

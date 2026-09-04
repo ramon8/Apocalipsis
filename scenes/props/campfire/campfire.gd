@@ -20,6 +20,13 @@ signal pot_changed(has_pot: bool)
 		_apply_state()
 		if changed:
 			lit_changed.emit(lit)
+			_publish_flag(lit_flag, lit)
+
+@export_group("World flags")
+## Flag de WorldState que refleja si esta encendida (vacio = no publica).
+@export var lit_flag: StringName = &"fire_lit"
+## Flag de WorldState que refleja si hay un pot encima.
+@export var pot_flag: StringName = &"pot_on_fire"
 
 ## Segundos que tarda el fuego en crecer hasta su estado final al encenderse.
 @export_range(0.0, 10.0, 0.1) var ignite_time := 3.0
@@ -188,6 +195,16 @@ var _burn_tween: Tween
 func _ready() -> void:
 	add_to_group("campfire")
 	_rebuild()
+	if not Engine.is_editor_hint():
+		# Estado inicial sin disparar reacciones.
+		WorldState.set_flag(lit_flag, lit, false)
+		WorldState.set_flag(pot_flag, has_pot(), false)
+
+
+func _publish_flag(flag: StringName, value: bool) -> void:
+	if Engine.is_editor_hint() or not is_inside_tree():
+		return
+	WorldState.set_flag(flag, value)
 
 
 func _process(delta: float) -> void:
@@ -440,6 +457,7 @@ func place_pot(pot: Node3D) -> void:
 	_fire.scale = pot_fire_spread
 	_smoke.emitting = false
 	pot_changed.emit(true)
+	_publish_flag(pot_flag, true)
 
 
 func remove_pot() -> void:
@@ -447,6 +465,7 @@ func remove_pot() -> void:
 	_fire.scale = Vector3.ONE
 	_smoke.emitting = lit and smoke_enabled
 	pot_changed.emit(false)
+	_publish_flag(pot_flag, false)
 
 
 func has_pot() -> bool:

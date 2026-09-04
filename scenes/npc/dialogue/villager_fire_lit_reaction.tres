@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="DialogueEntry" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/npc/dialogue_entry.gd" id="1_entry"]
+
+[resource]
+script = ExtResource("1_entry")
+id = &"villager_fire_lit_reaction"
+trigger = 1
+trigger_flag = &"fire_lit"
+lines = Array[String](["Much better, *thanks*!", "Now, would you go into the *barn*, grab the *pot* and put it *on the fire*?"])

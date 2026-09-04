@@ -1,7 +1,14 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scenes/npc/npc.gd" id="1_npc"]
+[ext_resource type="Script" path="res://scenes/npc/dialogue_entry.gd" id="2_entry"]
+[ext_resource type="Resource" path="res://scenes/npc/dialogue/villager_default.tres" id="3_default"]
+[ext_resource type="Resource" path="res://scenes/npc/dialogue/villager_fire_lit.tres" id="4_fire_lit"]
+[ext_resource type="Resource" path="res://scenes/npc/dialogue/villager_fire_lit_reaction.tres" id="5_fire_react"]
+[ext_resource type="Resource" path="res://scenes/npc/dialogue/villager_pot_placed_reaction.tres" id="6_pot_react"]
+[ext_resource type="Resource" path="res://scenes/npc/dialogue/villager_pot_on_fire.tres" id="7_pot_on_fire"]
 
 [node name="Npc" type="StaticBody3D"]
 collision_layer = 1
 script = ExtResource("1_npc")
+dialogue = Array[ExtResource("2_entry")]([ExtResource("3_default"), ExtResource("4_fire_lit"), ExtResource("5_fire_react"), ExtResource("6_pot_react"), ExtResource("7_pot_on_fire")])

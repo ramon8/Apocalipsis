@@ -21,6 +21,8 @@ signal dropped(player: Player)
 @export var drop_forward := 0.9
 ## Accion del jugador al coger y al soltar (agacharse: el apex es el momento del cambio).
 @export var grab_action: PlayerAction = preload("res://scenes/player/actions/crouch_grab.tres")
+## Flag de WorldState que se pone a true la primera vez que alguien lo coge (vacio = no).
+@export var taken_flag: StringName = &"pot_taken"
 
 @export_group("Audio")
 ## Suena al cogerlo y al dejarlo.
@@ -111,6 +113,7 @@ func _on_pickup_apex(_kind: StringName, player: Player) -> void:
 	player.holding = true
 	player.action_finished.connect(_on_sequence_done, CONNECT_ONE_SHOT)
 	picked_up.emit(player)
+	WorldState.set_flag(taken_flag)
 	_zone.hold(player)  # llevado: siempre es el interactuable actual
 
 

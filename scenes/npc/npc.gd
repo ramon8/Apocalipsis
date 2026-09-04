@@ -2,69 +2,34 @@
 class_name Npc
 extends StaticBody3D
 ## NPC estatico con el que se puede hablar. Al acercarse sale el prompt "Hablar" (E);
-## las frases de `lines` se muestran una a una en un bocadillo sobre su cabeza
-## (SpeechBubble, estilo A Short Hike). E completa la linea o pasa a la siguiente;
-## al terminar, o si el jugador se aleja, el bocadillo se cierra.
-## Se gira suavemente hacia el jugador mientras habla.
+## las frases se muestran una a una en un bocadillo sobre su cabeza (SpeechBubble,
+## estilo A Short Hike). E completa la linea o pasa a la siguiente; al terminar, o si el
+## jugador se aleja, el bocadillo se cierra. Sigue al jugador con la cabeza.
+##
+## Lo que dice y cuando lo dice viene de `dialogue` (Array[DialogueEntry]): bloques con
+## condiciones sobre los flags de WorldState y un disparador (hablar, cambio de flag,
+## salir de la habitacion). El NPC no conoce a la hoguera ni al pot: solo lee flags.
 
 signal dialogue_started
 signal dialogue_finished
 
 @export_group("Dialogo")
 @export var speaker_name := "Villager"
-## Una frase por bocadillo, en orden. Palabras clave entre asteriscos: *asi* (ondulan y
-## salen en color); el resto del texto queda quieto.
-@export_multiline var lines: Array[String] = [
-	"Brr... it's *freezing* out here.",
-	"Could you do me a favor and *light the campfire*?",
-]
-
+## Bloques de dialogo (ver DialogueEntry). Lo normal: uno TALK por defecto, otros TALK con
+## condiciones y mas prioridad, y reacciones FLAG a eventos del mundo.
+@export var dialogue: Array[DialogueEntry] = []
 ## Marcador "!" sobre la cabeza hasta que el jugador habla con el por primera vez.
 @export var show_exclamation := true
-## Si esta activo, el "!" reaparece cada vez que un evento le da dialogo nuevo.
-@export var exclamation_on_new_dialogue := false
-
-@export_group("Hoguera")
-@export var watch_campfire_enabled := true
-## Hoguera que vigila. Vacio = la mas cercana (grupo "campfire") dentro de campfire_search_radius.
-@export var watch_campfire: NodePath
-@export var campfire_search_radius := 30.0
-## Lo que dice al hablar con el una vez la hoguera esta encendida (y aun sin pot).
-@export_multiline var lines_when_fire_lit: Array[String] = [
-	"Could you fetch the *pot* from the *barn* and put it *on the fire*?",
-]
-## Lo que dice SOLO, automaticamente, en cuanto la hoguera se enciende.
-@export_multiline var fire_lit_reaction: Array[String] = [
-	"Much better, *thanks*!",
-	"Now, would you go into the *barn*, grab the *pot* and put it *on the fire*?",
-]
-## Lo que dice solo cuando el pot se pone al fuego, y al hablarle despues.
-@export_multiline var pot_placed_reaction: Array[String] = ["*Perfect*! Now we can cook something warm."]
-@export_multiline var lines_when_pot_on_fire: Array[String] = ["Thanks a lot, friend. Smells *great* already."]
-## Solo reacciona si el jugador esta a menos de esta distancia (si no, no se veria).
+## Las reacciones automaticas solo saltan si el jugador esta a menos de esta distancia
+## (si no, no se verian).
 @export var reaction_distance := 14.0
 ## Pausa antes de la reaccion automatica (segundos).
 @export var reaction_delay := 0.5
 ## Segundos que se mantiene cada linea automatica antes de pasar a la siguiente.
 @export var auto_line_time := 2.6
-
-@export_group("Pot (vigilante)")
-## Reacciona cuando el jugador coge un pot cercano (el guardian del granero).
-@export var watch_pot_enabled := false
-## Pot vigilado. Vacio = el mas cercano dentro de pot_search_radius.
-@export var watch_pot: NodePath
-@export var pot_search_radius := 12.0
-## Primera linea gritada (mas grande, roja, voz grave) + temblor de camara; luego se calma.
-@export_multiline var pot_taken_reaction: Array[String] = [
-	"Hey! *What are you doing*, THIEF?!",
-	"...Oh. Sorry. We were *robbed* recently and I'm a bit paranoid.",
-	"You can take it.",
-]
-@export var pot_taken_shout := true
+## Temblor de camara al gritar (DialogueEntry.shout).
 @export var shout_shake_strength := 0.3
 @export var shout_shake_duration := 0.45
-## Lo que dice al hablarle despues del susto.
-@export_multiline var lines_after_pot_taken: Array[String] = ["Sorry again about the shouting. Take good care of that pot."]
 
 @export_group("Perro")
 ## Cuando el jugador sale de la habitacion con este room_id, el perro se viene con este
@@ -73,12 +38,7 @@ signal dialogue_finished
 ## Donde se sienta el perro, relativo al NPC (x = a su derecha, z = delante).
 @export var dog_stay_offset := Vector3(1.3, 0.0, 0.4)
 
-@export_group("Despedida")
-## Al salir el jugador de la habitacion, el NPC dice esto (una sola vez) y la salida
-## espera a que el jugador pase el dialogo con E.
-@export_multiline var farewell_lines: Array[String] = []
-## Solo se despide si antes hubo el incidente del pot.
-@export var farewell_only_after_pot_taken := true
+@export_group("Bocadillo")
 ## Mostrar el nombre en negrita al principio de la primera linea.
 @export var show_name := true
 @export var chars_per_second := 32.0
@@ -149,16 +109,11 @@ var _zone: InteractionZone
 var _bubble: SpeechBubble
 var _talking_to: Player
 var _line := -1
-var _campfire: Campfire
-var _fire_lit := false
-var _pot_on_fire := false
-var _pot: Node
-var _pot_taken := false
 var _active_lines: Array[String] = []
 var _auto := false  # dialogo automatico (reaccion): avanza solo, sin prompt
 var _auto_timer := 0.0
 var _shout_first := false
-var _farewell_said := false
+var _said: Dictionary = {}  # DialogueEntry -> true (para `once`)
 var _marker: ExclamationMarker
 var _has_new := true  # tiene dialogo nuevo que el jugador aun no ha oido (marcador "!")
 ## Razon con la que este NPC bloquea al jugador mientras le habla (una por NPC: dos
@@ -172,8 +127,7 @@ func _ready() -> void:
 		return  # en el editor solo se previsualiza el modelo
 	_build_area()
 	_build_ui()
-	_connect_campfire.call_deferred()
-	_connect_pot.call_deferred()
+	WorldState.flag_changed.connect(_on_flag_changed)
 	if dog_stays_after_leaving_room != &"":
 		RoomManager.occupant_exited.connect(_on_room_exited)
 
@@ -186,83 +140,50 @@ func _on_room_exited(room: Room, body: Node3D) -> void:
 		dog.stay_at(Vector3(spot.x, global_position.y, spot.z))
 
 
-func _connect_pot() -> void:
-	if not watch_pot_enabled:
+# ------------------------------------------------------------------ dialogo por datos
+
+## Bloque TALK que toca decir ahora (mayor prioridad entre las disponibles), o null.
+func current_entry() -> DialogueEntry:
+	var best: DialogueEntry = null
+	for e in dialogue:
+		if e == null or e.trigger != DialogueEntry.Trigger.TALK:
+			continue
+		if e.once and _said.has(e):
+			continue
+		if not e.is_available():
+			continue
+		if best == null or e.priority >= best.priority:
+			best = e
+	return best
+
+
+func _on_flag_changed(flag: StringName, value: Variant) -> void:
+	if not bool(value):
 		return
-	if not watch_pot.is_empty():
-		_pot = get_node_or_null(watch_pot)
-	if _pot == null:
-		var best_d := pot_search_radius
-		for pot in get_tree().root.find_children("*", "PotCarryable", true, false):
-			var d: float = pot.global_position.distance_to(global_position)
-			if d < best_d:
-				best_d = d
-				_pot = pot
-	if _pot:
-		_pot.picked_up.connect(_on_pot_picked_up)
+	for e in dialogue:
+		if e == null or e.trigger != DialogueEntry.Trigger.FLAG or e.trigger_flag != flag:
+			continue
+		if e.once and _said.has(e):
+			continue
+		if e.is_available():
+			_react(e)
 
 
-func _on_pot_picked_up(player: Player) -> void:
-	if _pot_taken or pot_taken_reaction.is_empty():
-		return
-	_pot_taken = true
-	if not _player_can_see_me():
-		return
-	if player and player.global_position.distance_to(global_position) > reaction_distance:
-		return
-	if is_talking():
-		_end_dialogue()
-	if pot_taken_shout:
-		var rig := get_tree().get_first_node_in_group("camera_rig")
-		if rig and rig.has_method("shake"):
-			rig.shake(shout_shake_strength, shout_shake_duration)
-	_start_dialogue(player, pot_taken_reaction, true, pot_taken_shout)
-
-
-func _connect_campfire() -> void:
-	if not watch_campfire_enabled:
-		return
-	if not watch_campfire.is_empty():
-		_campfire = get_node_or_null(watch_campfire) as Campfire
-	if _campfire == null:
-		var best_d := campfire_search_radius
-		for fire in get_tree().get_nodes_in_group("campfire"):
-			var d: float = fire.global_position.distance_to(global_position)
-			if d < best_d:
-				best_d = d
-				_campfire = fire
-	if _campfire == null:
-		return
-	_fire_lit = _campfire.lit
-	_pot_on_fire = _campfire.has_pot()
-	_campfire.lit_changed.connect(_on_campfire_lit)
-	_campfire.pot_changed.connect(_on_campfire_pot_changed)
-
-
-func _on_campfire_lit(is_lit: bool) -> void:
-	_fire_lit = is_lit
-	if is_lit:
-		_react(fire_lit_reaction)
-
-
-func _on_campfire_pot_changed(has_pot: bool) -> void:
-	_pot_on_fire = has_pot
-	if has_pot:
-		_react(pot_placed_reaction)
-
-
-## Despedida al salir de la habitacion: si toca, la dice (automatica) y devuelve true para
-## que el edificio retenga la salida `farewell_hold` segundos.
+## Despedida al salir de la habitacion: si hay un bloque ROOM_EXIT disponible lo dice
+## (manual: E para avanzar) y devuelve true para que el edificio retenga la salida.
 func try_farewell(player: Player) -> bool:
-	if _farewell_said or farewell_lines.is_empty():
-		return false
-	if farewell_only_after_pot_taken and not _pot_taken:
-		return false
-	_farewell_said = true
-	if is_talking():
-		_end_dialogue()
-	_start_dialogue(player, farewell_lines)  # manual: E para avanzar y salir
-	return true
+	for e in dialogue:
+		if e == null or e.trigger != DialogueEntry.Trigger.ROOM_EXIT:
+			continue
+		if e.once and _said.has(e):
+			continue
+		if not e.is_available():
+			continue
+		if is_talking():
+			_end_dialogue()
+		_start_dialogue(player, e)
+		return true
+	return false
 
 
 ## Habitacion (Room) en la que vive el NPC, o null si esta al aire libre.
@@ -285,22 +206,39 @@ func _player_can_see_me() -> bool:
 	return room.is_player_inside()
 
 
-## Reaccion automatica a un evento: hay dialogo nuevo; si el jugador esta cerca (y puede
-## verme), lo dice solo tras `reaction_delay`.
-func _react(what: Array[String]) -> void:
-	if exclamation_on_new_dialogue:
+## Reaccion automatica a un evento: si el jugador esta cerca y puede verme, lo dice solo
+## tras `reaction_delay`. Si no, solo cuenta como dicho (y puede reponer el "!").
+func _react(entry: DialogueEntry) -> void:
+	if entry.mark_new:
 		_has_new = true
-	if what.is_empty() or not _player_can_see_me():
+	if not _player_can_see_me():
 		return
-	var rig := get_tree().get_first_node_in_group("camera_rig")
-	var target: Node3D = rig.target if rig else null
-	if target and target.global_position.distance_to(global_position) > reaction_distance:
+	var player := _nearby_player()
+	if player == null:
 		return
+	_said[entry] = true
 	if reaction_delay > 0.0:
 		await get_tree().create_timer(reaction_delay).timeout
+		if not is_inside_tree() or not is_instance_valid(player):
+			return
 	if is_talking():
 		_end_dialogue()
-	_start_dialogue(target as Player, what, true)
+	if entry.shout:
+		var rig := get_tree().get_first_node_in_group("camera_rig")
+		if rig and rig.has_method("shake"):
+			rig.shake(shout_shake_strength, shout_shake_duration)
+	_start_dialogue(player, entry, true)
+
+
+## El jugador si esta a menos de reaction_distance, o null.
+func _nearby_player() -> Player:
+	var player := get_tree().get_first_node_in_group("player") as Player
+	if player == null:
+		var rig := get_tree().get_first_node_in_group("camera_rig")
+		player = rig.target as Player if rig and rig.get("target") is Player else null
+	if player == null or player.global_position.distance_to(global_position) > reaction_distance:
+		return null
+	return player
 
 
 func _build_model() -> void:
@@ -464,7 +402,7 @@ func _process(delta: float) -> void:
 		var head := global_position + Vector3(0.0, sit_head_height if sit_on_floor else head_height, 0.0)
 		_marker.anchor = head
 		_marker.camera = get_viewport().get_camera_3d()
-		if show_exclamation and _has_new and not is_talking() and not current_lines().is_empty() \
+		if show_exclamation and _has_new and not is_talking() and current_entry() != null \
 				and _player_can_see_me():
 			_marker.show_marker()
 		else:
@@ -484,35 +422,27 @@ func is_talking() -> bool:
 
 # La E llega por la InteractionZone; durante el dialogo la zona tiene la E capturada.
 func can_interact(_player: Player) -> bool:
-	return not is_talking() and _player_can_see_me()
+	return not is_talking() and _player_can_see_me() and current_entry() != null
 
 
 func interact_with(player: Player) -> void:
 	if is_talking():
 		_advance()
 	else:
-		_start_dialogue(player, current_lines())
+		var entry := current_entry()
+		if entry:
+			_start_dialogue(player, entry)
 
 
-## Lineas que toca decir ahora mismo (segun el estado del mundo).
-func current_lines() -> Array[String]:
-	if _pot_taken and not lines_after_pot_taken.is_empty():
-		return lines_after_pot_taken
-	if _pot_on_fire and not lines_when_pot_on_fire.is_empty():
-		return lines_when_pot_on_fire
-	if _fire_lit and not lines_when_fire_lit.is_empty():
-		return lines_when_fire_lit
-	return lines
-
-
-func _start_dialogue(player: Player, what: Array[String], auto := false, shout_first := false) -> void:
-	if what.is_empty():
+func _start_dialogue(player: Player, entry: DialogueEntry, auto := false) -> void:
+	if entry == null or entry.lines.is_empty():
 		return
+	_said[entry] = true
 	_talking_to = player
-	_active_lines = what
+	_active_lines = entry.lines
 	_auto = auto
 	_auto_timer = 0.0
-	_shout_first = shout_first
+	_shout_first = entry.shout
 	_line = -1
 	_zone.hide_prompt()
 	if not auto:

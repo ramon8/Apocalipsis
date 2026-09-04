@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 RetroRenderer="*res://retro/retro_renderer.tscn"
 InteractionManager="*res://scenes/ui/interaction_manager.gd"
 RoomManager="*res://scenes/interiors/room_manager.gd"
+WorldState="*res://scenes/world/world_state.gd"
 
 [display]
 

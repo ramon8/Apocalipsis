@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="DialogueEntry" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/npc/dialogue_entry.gd" id="1_entry"]
+
+[resource]
+script = ExtResource("1_entry")
+id = &"barn_default"
+lines = Array[String](["Mind the hay, it's fresh.", "Been a rough season around here."])

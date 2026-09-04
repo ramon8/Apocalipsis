@@ -158,6 +158,7 @@ func _ready() -> void:
 	_apply_backpack_visibility()
 	if Engine.is_editor_hint():
 		return  # editor preview only: scale + backpack flag, no gameplay setup
+	add_to_group("player")
 	_camera_rig = get_tree().get_first_node_in_group("camera_rig")
 	_skeleton = _model.find_child("Skeleton3D", true, false) as Skeleton3D
 	_footsteps = get_node_or_null("Footsteps") as FootstepAudio
