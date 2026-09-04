@@ -1,8 +1,11 @@
-// ground.gdshader — procedural pixel-art style ground.
-// Base colour comes from a tiled texture (or a flat colour), then world-space noise adds
-// large tonal patches, fine grain and sparse speckles. Everything is snapped to a texel
-// grid and quantized to a few levels so it reads as chunky pixels, not smooth noise.
-// World-space sampling means the pattern never stretches with UVs or mesh size.
+// ground.gdshader — suelo procedural estilo pixel-art.
+// Base: textura tileada (o color plano) + ruido en espacio de mundo (manchas grandes,
+// grano fino, motas). Encima, dos capas opcionales:
+//   - hierba a parches (ruido umbralizado, dos tonos) que evita los caminos
+//   - caminos de tierra desde una mascara (GroundPaths la pinta desde Path3D) con el
+//     borde desgastado por ruido
+// Todo se muestrea snapeado a una rejilla de texels y se cuantiza a pocos niveles, para
+// que se lea como pixeles gordos y no como ruido suave.
 shader_type spatial;
 render_mode cull_back, diffuse_lambert, specular_disabled;
 
@@ -33,6 +36,37 @@ uniform float light_speckle_brightness : hint_range(1.0, 2.0, 0.05) = 1.3;
 uniform vec4 patch_tint : source_color = vec4(0.85, 0.8, 0.8, 1.0);
 uniform float patch_tint_strength : hint_range(0.0, 1.0, 0.05) = 0.4;
 
+group_uniforms grass;
+uniform bool grass_enabled = true;
+// Fraccion del suelo cubierta de hierba (0 = nada, 1 = todo).
+uniform float grass_coverage : hint_range(0.0, 1.0, 0.01) = 0.5;
+// Tamano de los parches (m) y del detalle que rompe su borde (m).
+uniform float grass_scale : hint_range(1.0, 60.0, 0.5) = 9.0;
+uniform float grass_detail_scale : hint_range(0.25, 10.0, 0.25) = 1.5;
+uniform vec4 grass_color : source_color = vec4(0.32, 0.38, 0.26, 1.0);
+// Segundo tono (hierba en sombra / mas densa) y cuanta superficie ocupa dentro del parche.
+uniform vec4 grass_dark_color : source_color = vec4(0.15, 0.16, 0.06, 1.0);
+uniform float grass_dark_amount : hint_range(0.0, 1.0, 0.05) = 0.35;
+// Motas claras sobre la hierba (florecillas/puntas secas), probabilidad por texel.
+uniform float grass_speckle_density : hint_range(0.0, 0.2, 0.001) = 0.01;
+// Ancho (en valor de ruido) de la banda punteada en el borde de los parches.
+uniform float grass_edge_dither : hint_range(0.0, 0.3, 0.01) = 0.1;
+// Hasta que valor de la mascara de camino (anillos exteriores) la hierba se retira.
+uniform float grass_path_margin : hint_range(0.0, 1.0, 0.05) = 0.3;
+
+group_uniforms paths;
+// Mascara pintada por GroundPaths: 0 = sin camino, 1 = nucleo del camino.
+uniform sampler2D path_mask : hint_default_black, filter_nearest, repeat_disable;
+// Region del mundo que cubre la mascara: (min_x, min_z, ancho, alto) en metros.
+uniform vec4 path_region = vec4(-128.0, -128.0, 256.0, 256.0);
+// Tinte del camino (multiplica la base): un poco mas claro y calido que el suelo.
+uniform vec4 path_tint : source_color = vec4(1.08, 1.02, 0.92, 1.0);
+// Irregularidad del borde (0 = borde limpio al ancho del camino, 1 = muy desgastado).
+uniform float path_edge_noise : hint_range(0.0, 1.0, 0.05) = 0.6;
+uniform float path_edge_scale : hint_range(0.25, 10.0, 0.25) = 1.25;
+// Las motas del suelo se reducen dentro del camino (tierra pisada, mas lisa).
+uniform float path_speckle_factor : hint_range(0.0, 1.0, 0.05) = 0.3;
+
 varying vec3 world_pos;
 
 float hash21(vec2 p) {
@@ -58,6 +92,15 @@ float quantize(float v) {
 	return floor(v * n + 0.5) / n;
 }
 
+// Valor de la mascara de caminos en este texel (0 fuera de la region).
+float path_mask_at(vec2 texel) {
+	vec2 uv = (texel - path_region.xy) / path_region.zw;
+	if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) {
+		return 0.0;
+	}
+	return texture(path_mask, uv).r;
+}
+
 void vertex() {
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
@@ -80,12 +123,55 @@ void fragment() {
 	float dampness = clamp(-patch * 2.0, 0.0, 1.0) * patch_tint_strength;
 	col = mix(col, col * patch_tint.rgb, dampness);
 
+	// --- caminos: mascara + ruido en el umbral = borde desgastado.
+	float mask = path_mask_at(texel);
+	float edge_n = vnoise(texel / path_edge_scale + 101.0) * 0.6 + vnoise(texel / path_edge_scale * 2.7 + 57.0) * 0.4;
+	float threshold = 0.5 + (edge_n - 0.5) * path_edge_noise;
+	float path = (mask > 0.0 && mask >= threshold) ? 1.0 : 0.0;
+
+	// --- hierba a parches, lejos de los caminos.
+	float grass = 0.0;
+	vec3 grass_col = grass_color.rgb;
+	if (grass_enabled) {
+		float g = vnoise(texel / grass_scale + 3.0) * 0.55 + vnoise(texel / grass_detail_scale + 31.0) * 0.45;
+		float thr = 1.0 - grass_coverage;
+		// Borde punteado: en una banda alrededor del umbral cada texel decide al azar, asi el
+		// parche se deshilacha en matas sueltas en vez de cortarse en bloque.
+		float band = grass_edge_dither;
+		float dither_r = hash21(texel * 3.3 + 11.0);
+		if (g > thr + band) {
+			grass = 1.0;
+		} else if (g > thr - band) {
+			grass = (dither_r < (g - (thr - band)) / (2.0 * band)) ? 1.0 : 0.0;
+		}
+		// Se retira del camino y de sus anillos exteriores (tambien con borde punteado).
+		if (mask > grass_path_margin) {
+			grass = 0.0;
+		} else if (mask > 0.0) {
+			grass *= (dither_r < 1.0 - mask / grass_path_margin) ? 1.0 : 0.0;
+		}
+		grass *= 1.0 - path;
+		float dark = vnoise(texel / (grass_detail_scale * 1.7) + 7.0);
+		float in_core = (g > thr + band + 0.08) ? 1.0 : 0.0;  // el tono oscuro solo en el interior
+		grass_col = mix(grass_color.rgb, grass_dark_color.rgb, in_core * ((dark > 1.0 - grass_dark_amount) ? 1.0 : 0.0));
+		grass_col *= 1.0 + grain * 2.0 * grain_strength;
+	}
+
 	// Speckles, one texel each.
 	float s = hash21(texel * 7.1 + 3.7);
-	if (s < speckle_density) {
+	float speckle_scale = mix(1.0, path_speckle_factor, path);
+	if (s < speckle_density * speckle_scale) {
 		col = base * speckle_brightness;
-	} else if (s > 1.0 - light_speckle_density) {
+	} else if (s > 1.0 - light_speckle_density * speckle_scale) {
 		col = base * light_speckle_brightness;
+	}
+
+	col = mix(col, col * path_tint.rgb, path);
+	if (grass > 0.5) {
+		col = grass_col;
+		if (s > 1.0 - grass_speckle_density) {
+			col = grass_color.rgb * 1.35;
+		}
 	}
 
 	ALBEDO = col;

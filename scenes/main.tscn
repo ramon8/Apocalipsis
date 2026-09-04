@@ -16,6 +16,8 @@
 [ext_resource type="PackedScene" path="res://scenes/props/heno/heno.tscn" id="16_jbj1t"]
 [ext_resource type="PackedScene" uid="uid://dg284isaygq4t" path="res://scenes/interiors/molinos/molino_sur.tscn" id="16_sur"]
 [ext_resource type="PackedScene" path="res://scenes/npc/npc.tscn" id="17_muem4"]
+[ext_resource type="Script" path="res://scenes/environment/paths/ground_paths.gd" id="18_paths"]
+[ext_resource type="Script" path="res://scenes/environment/paths/ground_path.gd" id="19_path"]
 
 [sub_resource type="Gradient" id="Gradient_trceg"]
 offsets = PackedFloat32Array(0, 0.12, 0.5, 0.88, 1)
@@ -56,6 +58,14 @@ size = Vector2(1000, 1000)
 [sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
 size = Vector3(1000, 1, 1000)
 
+[sub_resource type="Curve3D" id="Curve3D_village"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 39, 0, -6.6, 0, 0, 0, 0, 0, 0, 18, 0, -9, 0, 0, 0, 0, 0, 0, -2, 0, -14, 0, 0, 0, 0, 0, 0, -16, 0, -17, 0, 0, 0, 0, 0, 0, -26, 0, -12, 0, 0, 0, 0, 0, 0, -31, 0, -8),
+"tilts": PackedFloat32Array(0, 0, 0, 0, 0, 0),
+"closed": false
+}
+point_count = 6
+
 [node name="Main" type="Node" unique_id=1477144514]
 
 [node name="World" type="Node3D" parent="." unique_id=863254421]
@@ -70,8 +80,9 @@ sun_gradient = SubResource("Gradient_trceg")
 sky_top_gradient = SubResource("Gradient_a8y0u")
 sky_horizon_gradient = SubResource("Gradient_jkv2x")
 
-[node name="ScatterWorld" parent="World" unique_id=1742216399 instance=ExtResource("1_85g3d")]
+[node name="ScatterWorld" parent="World" unique_id=1742216399 node_paths=PackedStringArray("paths") instance=ExtResource("1_85g3d")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -103.82768, 0, 0)
+paths = NodePath("../GroundPaths")
 tree_scenes = Array[PackedScene]([ExtResource("2_eb6dy"), ExtResource("3_trceg")])
 prop_density = 50.0
 bush_weight = 0.25
@@ -106,6 +117,15 @@ directional_shadow_max_distance = 250.0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.16101646, -0.115327835, -0.0028800964)
 material_override = ExtResource("9_ground")
 mesh = SubResource("PlaneMesh_floor")
+
+[node name="GroundPaths" type="Node3D" parent="World" node_paths=PackedStringArray("ground")]
+script = ExtResource("18_paths")
+ground = NodePath("../MeshInstance3D")
+
+[node name="Path" type="Path3D" parent="World/GroundPaths"]
+curve = SubResource("Curve3D_village")
+script = ExtResource("19_path")
+width = 2.5
 
 [node name="Floor" type="StaticBody3D" parent="World" unique_id=639489277]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)

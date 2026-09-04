@@ -229,6 +229,38 @@ Reglas de comportamiento:
 Los ejemplos vivos son las dos quests actuales: aldeano (encender la hoguera y traer el
 pot) y granjero (grita al robarle el pot, se disculpa, se despide).
 
+## Terreno: caminos desde `Path3D` y hierba a parches
+
+El suelo es un `PlaneMesh` con `ground_material.tres` (`ground/shaders/ground.gdshader`).
+El shader pinta, sobre la tierra base: hierba a parches (ruido umbralizado con borde
+punteado, dos tonos) y caminos desde una máscara, con el borde desgastado por ruido.
+
+**Caminos.** `GroundPaths` (`scenes/environment/paths/ground_paths.gd`) cuelga de `World`
+con `ground` apuntando a la malla del suelo. Cada hijo `GroundPath` (un `Path3D` con
+`width` y `strength`) se rasteriza a una máscara en un `SubViewport` (anillos de brillo
+creciente hacia el centro) que llega al shader como `path_mask` + `path_region`. Se
+repinta solo al mover puntos en el editor.
+
+- Para un camino nuevo: añade un `GroundPath` bajo `GroundPaths` y dibuja la curva. La
+  altura de los puntos se ignora. Solo cuenta lo que cae dentro de `region_size`
+  (256 m centrados en el nodo por defecto; muévelo o amplíalo si el pueblo crece).
+- `GroundPaths.clearance_at(xz)` da la distancia al borde del camino más cercano
+  (negativa dentro). `ScatterWorld` lo usa con `paths` y `path_clearance` para no plantar
+  árboles ni arbustos encima. Cualquier dispersión nueva debería hacer lo mismo.
+- Hierba: `grass_coverage`, `grass_scale` (tamaño de parche), `grass_edge_dither` (borde
+  en matas), `grass_path_margin` (cuánto se aparta del camino). La hierba de blades del
+  `ScatterWorld` está desactivada (`grass_enabled = false`): metía ruido.
+
+**Capturas de pantalla.** Headless no compila shaders. Para validar un shader o ver el
+resultado sin abrir el editor:
+
+```
+SCREENSHOT_PATH=out.png SCREENSHOT_POS="5,-13" godot --path . --resolution 1280x720 --quit-after 500 tests/screenshot.tscn
+```
+
+`SCREENSHOT_POS` coloca al jugador (y la cámara) en ese XZ; `SCREENSHOT_MASK=mask.png`
+vuelca además la máscara de caminos. Abre una ventana unos segundos.
+
 ## Interiores
 
 `Room` (`scenes/interiors/room.gd`) es una escena heredada de `room.tscn` con `room_id`

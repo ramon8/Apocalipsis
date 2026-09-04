@@ -55,6 +55,12 @@ extends Node3D
 @export var bush_height := 1.8
 @export var size_variation := 0.25
 
+@export_group("Paths")
+## Caminos (GroundPaths) que la dispersion respeta: nada se planta encima ni a menos de
+## `path_clearance` metros de su borde.
+@export var paths: GroundPaths
+@export_range(0.0, 10.0, 0.25) var path_clearance := 1.0
+
 @export_group("Forest shape")
 ## 0 = bosque uniforme; 1 = manchas de bosque y claros segun el ruido.
 @export_range(0.0, 1.0, 0.05) var patchiness := 0.7
@@ -164,7 +170,8 @@ func _config_hash() -> int:
 			grass_enabled, grass_density, grass_height_range, grass_segments,
 			grass_base_color, grass_tip_color, grass_variation_color,
 			grass_variation_amount, grass_blade_width, grass_billboard_tilt,
-			editor_preview, preview_radius])
+			editor_preview, preview_radius,
+			path_clearance, paths._content_hash() if paths else 0])
 
 
 func _build_editor_preview() -> void:
@@ -316,6 +323,9 @@ func _cell_props(c: Vector2i) -> Array:
 		var n := (_noise.get_noise_2d(centre.x + p.x, centre.z + p.y) + 1.0) * 0.5
 		var keep := lerpf(1.0, smoothstep(patch_threshold - 0.15, patch_threshold + 0.15, n), patchiness)
 		if rng.randf() > keep:
+			continue
+		if paths and paths.clearance_at(Vector2(global_position.x + centre.x + p.x,
+				global_position.z + centre.z + p.y)) < path_clearance:
 			continue
 		var ok := true
 		for q in placed:
