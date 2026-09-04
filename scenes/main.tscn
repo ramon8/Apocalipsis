@@ -160,7 +160,7 @@ growth = 0.69
 plant_scale = 3.0
 width_scale = 1.4
 
-[node name="House1" parent="World" instance=ExtResource("25_house1")]
+[node name="House1" parent="World" unique_id=899507254 instance=ExtResource("25_house1")]
 transform = Transform3D(0.8660254, 0, 0.5, 0, 1, 0, -0.5, 0, 0.8660254, 26, 0, -18)
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="World" unique_id=235434014]
@@ -224,6 +224,7 @@ grime_amount = 0.4
 weathering_amount = 0.2
 dirt_amount = 0.9
 interior_scene = ExtResource("15_norte")
+bounds_mesh_name = "Molino"
 
 [node name="Molino2" parent="World" unique_id=1275929520 instance=ExtResource("13_trceg")]
 transform = Transform3D(0.3959371, 0, 0.91827774, 0, 1, 0, -0.91827774, 0, 0.3959371, -36.407265, 0, -19.995117)
@@ -232,6 +233,7 @@ grime_amount = 0.4
 weathering_amount = 0.45
 dirt_amount = 0.95
 interior_scene = ExtResource("16_sur")
+bounds_mesh_name = "Molino"
 
 [node name="Heno9" type="Node" parent="World" unique_id=1934328431]
 
@@ -264,7 +266,7 @@ transform = Transform3D(-0.99997884, 0, 0.006511748, 0, 1, 0, -0.006511748, 0, -
 curve = SubResource("Curve3D_2bd0u")
 
 [node name="FenceGate" type="Node3D" parent="World/Fence" unique_id=942708825]
-transform = Transform3D(-0.034716524, 0, 0.9993972, 0, 1, 0, 0.9993972, 0, 0.034716524, 13.913433, 0, -8.423119)
+transform = Transform3D(-0.03473558, 0, 0.99939656, 0, 1, 0, 0.99939656, 0, 0.03473558, 13.913102, 0, -8.413573)
 script = ExtResource("21_gate")
 metadata/_custom_type_script = "uid://dhteqns123r3b"
 

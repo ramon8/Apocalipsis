@@ -16,6 +16,14 @@ func _ready() -> void:
 		var player := get_tree().get_first_node_in_group("player") as Node3D
 		if player and parts.size() == 2:
 			player.global_position = Vector3(float(parts[0]), player.global_position.y, float(parts[1]))
+	# SCREENSHOT_ENTER="House1": mete al jugador en el interior de ese edificio.
+	var enter_s := OS.get_environment("SCREENSHOT_ENTER")
+	if enter_s != "":
+		var b := get_tree().root.find_child(enter_s, true, false)
+		var pl := get_tree().get_first_node_in_group("player") as Node3D
+		if b and pl and b.get("_room"):
+			pl.global_position = b._room.global_position + Vector3(0.0, 0.0, 0.5)
+			b._enter_interior(pl)
 	var zoom_s := OS.get_environment("SCREENSHOT_ZOOM")
 	if zoom_s != "":
 		var rig := get_tree().get_first_node_in_group("camera_rig")

@@ -17,6 +17,7 @@ var _blades: Node3D
 
 func _init() -> void:
 	bounds_mesh_name = "Molino"
+	interior_shape = Room.Shape.CIRCLE
 
 
 func _setup_model(model: Node) -> void:

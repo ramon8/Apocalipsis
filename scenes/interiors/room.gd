@@ -21,8 +21,20 @@ const FLOOR_SHADER := preload("res://scenes/interiors/shaders/room_floor.gdshade
 const CORRIDOR_SHADER := preload("res://scenes/interiors/shaders/room_corridor.gdshader")
 const INTERIOR_LAYER := 2  # bit 2 de capas de render (modo interior de la camara)
 
+enum Shape { CIRCLE, RECTANGLE }
+
 ## Identificador unico de la habitacion (para RoomManager, guardado, NPCs...).
 @export var room_id: StringName = &""
+## Forma de la planta. La fija el edificio (Building.interior_shape); se puede forzar aqui.
+@export var shape := Shape.CIRCLE:
+	set(value):
+		shape = value
+		_rebuild()
+## Tamano de la planta rectangular (m). 0 = lo fija el edificio (auto por su modelo).
+@export var rect_size := Vector2.ZERO:
+	set(value):
+		rect_size = value
+		_rebuild()
 ## Radio del suelo. 0 = lo fija el edificio que la usa (auto por su modelo).
 @export var radius := 0.0:
 	set(value):
@@ -84,6 +96,8 @@ const INTERIOR_LAYER := 2  # bit 2 de capas de render (modo interior de la camar
 
 ## Radio que impone el edificio cuando `radius` es 0.
 var auto_radius := 3.4
+## Tamano rectangular que impone el edificio cuando `rect_size` es 0.
+var auto_rect := Vector2(6.0, 6.0)
 var occupants: Array[Node3D] = []
 
 var _floor: MeshInstance3D
@@ -118,6 +132,49 @@ func _exit_tree() -> void:
 
 func effective_radius() -> float:
 	return radius if radius > 0.0 else auto_radius
+
+
+func effective_rect() -> Vector2:
+	return rect_size if rect_size.x > 0.0 and rect_size.y > 0.0 else auto_rect
+
+
+func is_rect() -> bool:
+	return shape == Shape.RECTANGLE
+
+
+## Direccion de la puerta (XZ, unitaria) y, en rectangulos, la normal de la cara donde cae.
+func door_dir() -> Vector2:
+	var a := deg_to_rad(door_angle_deg)
+	return Vector2(sin(a), cos(a))
+
+
+## Punto de la puerta en el borde de la planta (local XZ).
+func door_point() -> Vector2:
+	var dir := door_dir()
+	if not is_rect():
+		return dir * effective_radius()
+	var half := effective_rect() * 0.5
+	var tx := INF if absf(dir.x) < 0.0001 else half.x / absf(dir.x)
+	var tz := INF if absf(dir.y) < 0.0001 else half.y / absf(dir.y)
+	return dir * minf(tx, tz)
+
+
+## Normal (XZ) de la cara de la puerta: la direccion del pasillo de salida.
+func door_normal() -> Vector2:
+	var dir := door_dir()
+	if not is_rect():
+		return dir
+	var half := effective_rect() * 0.5
+	var p := door_point()
+	# Cara que toca: la que alcanza primero el rayo.
+	if absf(absf(p.x) - half.x) < absf(absf(p.y) - half.y):
+		return Vector2(signf(p.x), 0.0)
+	return Vector2(0.0, signf(p.y))
+
+
+## Distancia del centro al punto de la puerta.
+func door_distance() -> float:
+	return door_point().length()
 
 
 func has_occupant(body: Node3D) -> bool:
@@ -228,47 +285,59 @@ func _rebuild() -> void:
 	_walls = null
 	_corridor = null
 	var r := effective_radius()
+	var rect := effective_rect()
 
-	# Suelo: abanico con el shader de tierra sucia.
+	# Suelo con el shader de tierra sucia: abanico (circulo) o plano (rectangulo).
 	_floor = MeshInstance3D.new()
 	_floor.name = "Floor"
-	_floor.mesh = _make_floor_mesh(r, 16)
+	if is_rect():
+		var plane := PlaneMesh.new()
+		plane.size = rect
+		_floor.mesh = plane
+	else:
+		_floor.mesh = _make_floor_mesh(r, 16)
 	_floor.position.y = 0.02  # sobre el terreno exterior: al solaparse gana este
 	var mat := ShaderMaterial.new()
 	mat.shader = FLOOR_SHADER
 	mat.set_shader_parameter("base_color", floor_base_color)
 	mat.set_shader_parameter("dirt_color", floor_dirt_color)
 	mat.set_shader_parameter("dirt_amount", floor_dirt_amount)
-	mat.set_shader_parameter("floor_radius", r)
+	mat.set_shader_parameter("floor_radius", r if not is_rect() else maxf(rect.x, rect.y) * 0.5)
+	mat.set_shader_parameter("floor_half", rect * 0.5 if is_rect() else Vector2.ZERO)
 	mat.set_shader_parameter("seed_offset", float(hash(String(room_id) + name) % 1000))
 	_floor.material_override = mat
 	add_child(_floor)
 
-	# Paredes de colision: anillo de segmentos con hueco en la puerta.
+	# Paredes de colision con hueco en la puerta.
 	_walls = StaticBody3D.new()
 	_walls.name = "Walls"
 	_walls.collision_layer = 0
-	var segments := 16
 	var door_rad := deg_to_rad(door_angle_deg)
-	var half_gap: float = asin(clampf(door_width * 0.5 / r, 0.0, 1.0))
-	for i in segments:
-		var a := TAU * (float(i) + 0.5) / float(segments)
-		if absf(angle_difference(a, door_rad)) < half_gap + TAU / float(segments) * 0.5:
-			continue
-		var shape := CollisionShape3D.new()
-		var box := BoxShape3D.new()
-		var seg_len := TAU * r / float(segments)
-		box.size = Vector3(seg_len * 1.15, 4.0, 0.3)
-		shape.shape = box
-		shape.position = Vector3(sin(a), 0.0, cos(a)) * r + Vector3(0.0, 2.0, 0.0)
-		shape.rotation.y = a
-		_walls.add_child(shape)
+	if is_rect():
+		_build_rect_walls(rect)
+	else:
+		var segments := 16
+		var half_gap: float = asin(clampf(door_width * 0.5 / r, 0.0, 1.0))
+		for i in segments:
+			var a := TAU * (float(i) + 0.5) / float(segments)
+			if absf(angle_difference(a, door_rad)) < half_gap + TAU / float(segments) * 0.5:
+				continue
+			var shape_node := CollisionShape3D.new()
+			var box := BoxShape3D.new()
+			var seg_len := TAU * r / float(segments)
+			box.size = Vector3(seg_len * 1.15, 4.0, 0.3)
+			shape_node.shape = box
+			shape_node.position = Vector3(sin(a), 0.0, cos(a)) * r + Vector3(0.0, 2.0, 0.0)
+			shape_node.rotation.y = a
+			_walls.add_child(shape_node)
 	add_child(_walls)
 
 	if corridor_enabled:
 		_build_corridor(door_rad, r)
 
 	# Luz de la habitacion: omni suave sobre el centro, solo para la capa interior.
+	if is_rect():
+		r = maxf(rect.x, rect.y) * 0.5
 	if _light:
 		_light.free()
 		_light = null
@@ -288,13 +357,65 @@ func _rebuild() -> void:
 		_apply_layers(self)
 
 
+## Cuatro paredes con el hueco de la puerta en la cara que toca.
+func _build_rect_walls(rect: Vector2) -> void:
+	var half := rect * 0.5
+	var dp := door_point()
+	var n := door_normal()
+	var t := 0.3  # grosor
+	# Cada cara: normal, centro, longitud, eje a lo largo.
+	var faces := [
+		[Vector2(1, 0), Vector2(half.x, 0), rect.y, Vector2(0, 1)],
+		[Vector2(-1, 0), Vector2(-half.x, 0), rect.y, Vector2(0, 1)],
+		[Vector2(0, 1), Vector2(0, half.y), rect.x, Vector2(1, 0)],
+		[Vector2(0, -1), Vector2(0, -half.y), rect.x, Vector2(1, 0)],
+	]
+	for f in faces:
+		var normal: Vector2 = f[0]
+		var centre: Vector2 = f[1]
+		var length: float = f[2]
+		var axis: Vector2 = f[3]
+		var yaw := atan2(axis.x, axis.y)  # eje Z de la caja a lo largo de la cara
+		if normal == n:
+			# Dos tramos alrededor de la puerta.
+			var along := (dp - centre).dot(axis)
+			var a0 := -length * 0.5
+			var a1 := along - door_width * 0.5
+			var b0 := along + door_width * 0.5
+			var b1 := length * 0.5
+			for seg in [[a0, a1], [b0, b1]]:
+				var seg_len: float = seg[1] - seg[0]
+				if seg_len <= 0.05:
+					continue
+				var mid: Vector2 = centre + axis * ((seg[0] + seg[1]) * 0.5)
+				_walls.add_child(_wall_box(Vector3(mid.x, 2.0, mid.y), seg_len, t, yaw))
+		else:
+			_walls.add_child(_wall_box(Vector3(centre.x, 2.0, centre.y), length + t, t, yaw))
+
+
+func _wall_box(pos: Vector3, length: float, thickness: float, yaw: float) -> CollisionShape3D:
+	var shape_node := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(thickness, 4.0, length)
+	shape_node.shape = box
+	shape_node.position = pos
+	shape_node.rotation.y = yaw
+	return shape_node
+
+
 ## Pasillo de salida: suelo claro desde la puerta hacia fuera que se funde a negro
 ## con el void (sin pared de luz). Solo existe dentro (es parte de la habitacion).
 func _build_corridor(door_rad: float, r: float) -> void:
 	_corridor = Node3D.new()
 	_corridor.name = "ExitCorridor"
-	_corridor.position = Vector3(sin(door_rad), 0.0, cos(door_rad)) * r
-	_corridor.rotation.y = door_rad
+	if is_rect():
+		var dp := door_point()
+		var n := door_normal()
+		_corridor.position = Vector3(dp.x, 0.0, dp.y)
+		_corridor.rotation.y = atan2(n.x, n.y)
+	else:
+		_corridor.position = Vector3(sin(door_rad), 0.0, cos(door_rad)) * r
+		_corridor.rotation.y = door_rad
 	add_child(_corridor)
 
 	var floor_mi := MeshInstance3D.new()

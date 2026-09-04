@@ -366,9 +366,11 @@ vuelca además la máscara de caminos. Abre una ventana unos segundos.
 `Building` (`scenes/props/building/building.gd`) es la base de todo edificio con interior:
 casas, molinos, iglesia. Espera un hijo `Model` (instancia del GLB con colisión `-col`) y
 se encarga del shader de envejecido (`grime_amount`, `weathering_amount`, `dirt_amount`,
-`dirt_height`), de la `Room` interior centrada en el AABB del modelo con el mayor círculo
-que cabe en la planta, y de la zona de la puerta en la cara `door_angle_deg` (0 = +Z
-local). `Molino` extiende `Building` con las aspas y fija `bounds_mesh_name = "Molino"`
+`dirt_height`), de la `Room` interior centrada en el AABB del modelo (rectangular con la
+planta del modelo por `interior_rect_fit`, o circular con el mayor círculo que cabe;
+`interior_shape`), y de la zona de la puerta en `Room.door_point()`, la cara que cruza
+`door_angle_deg` (0 = +Z local). La `Room` construye suelo, cuatro paredes con hueco y
+pasillo perpendicular a esa cara. `Molino` extiende `Building` con las aspas y fija `bounds_mesh_name = "Molino"`
 para que las aspas no cuenten en la planta.
 
 **Casa nueva:** exporta el GLB a `assets/models/Houses/` (colisión `-col`, origen en el

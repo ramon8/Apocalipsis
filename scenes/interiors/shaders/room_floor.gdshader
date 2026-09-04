@@ -16,6 +16,8 @@ uniform float speckle_amount : hint_range(0.0, 1.0, 0.05) = 0.35;
 uniform float edge_darkening : hint_range(0.0, 1.0, 0.05) = 0.45;
 // Radio del suelo en unidades locales (para el oscurecido del borde).
 uniform float floor_radius = 2.0;
+// Planta rectangular: semiejes (m). (0,0) = circular (usa floor_radius).
+uniform vec2 floor_half = vec2(0.0);
 // Cuantiza el resultado a N niveles (0 = desactivado, recomendado: el post retro
 // ya cuantiza la pantalla entera; niveles bajos aplastan el tono a gris).
 uniform int levels : hint_range(0, 16) = 0;
@@ -50,7 +52,14 @@ void fragment() {
 	col = mix(col, col * 1.35, step(0.985, sp) * speckle_amount);
 	col = mix(col, col * 0.6, step(sp, 0.012) * speckle_amount);
 	// Mas sucio y oscuro pegado a las paredes.
-	float edge = smoothstep(floor_radius * 0.55, floor_radius, length(p));
+	float edge;
+	if (floor_half.x > 0.0) {
+		// Distancia normalizada al borde mas cercano del rectangulo.
+		vec2 q = abs(p) / floor_half;
+		edge = smoothstep(0.55, 1.0, max(q.x, q.y));
+	} else {
+		edge = smoothstep(floor_radius * 0.55, floor_radius, length(p));
+	}
 	col = mix(col, col * (1.0 - edge_darkening), edge * (0.6 + 0.4 * vnoise(p * 2.3)));
 	// Cuantizacion retro. OJO: los source_color llegan en espacio LINEAL (muy oscuros:
 	// 0.32 sRGB ~ 0.08 lineal); cuantizar ahi aplasta todo a negro. Se cuantiza en gamma.

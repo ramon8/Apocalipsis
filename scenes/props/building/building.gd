@@ -49,9 +49,13 @@ const WEATHER_SHADER := preload("res://scenes/props/molino/shaders/molino_weathe
 ## Habitacion de ESTE edificio: escena heredada de scenes/interiors/room.tscn con su
 ## room_id (organizalas por carpetas, p. ej. scenes/interiors/molinos/).
 @export var interior_scene: PackedScene = preload("res://scenes/interiors/room.tscn")
-## Radio del suelo interior en metros. 0 = auto: el mayor circulo que cabe en la planta
-## (la habitacion puede fijar el suyo propio con Room.radius > 0).
+## Planta del interior: rectangulo (casas) o circulo (torres). Rectangulo = la del modelo.
+@export var interior_shape := Room.Shape.RECTANGLE
+## Radio del suelo interior en metros (circulo). 0 = auto: el mayor circulo que cabe en la
+## planta (la habitacion puede fijar el suyo propio con Room.radius > 0).
 @export var interior_radius := 0.0
+## Encogimiento de la planta rectangular respecto al modelo (paredes con grosor).
+@export_range(0.5, 1.0, 0.01) var interior_rect_fit := 0.9
 ## Direccion de la puerta en grados (local, 0 = +Z). Ajustar hasta que coincida con el modelo.
 @export var door_angle_deg := 0.0
 ## Ancho del hueco de la puerta (m).
@@ -93,7 +97,7 @@ func _process(_delta: float) -> void:
 	# (donde el suelo ya se ha fundido a negro) restauramos el exterior.
 	if _is_player_inside():
 		var local := to_local(_player_inside.global_position) - _centre
-		if Vector2(local.x, local.z).length() > _radius + _room.corridor_length * 0.8:
+		if Vector2(local.x, local.z).length() > _room.door_distance() + _room.corridor_length * 0.8:
 			_exit_interior()
 
 
@@ -193,7 +197,9 @@ func _build_interior() -> void:
 		push_warning("%s: interior_scene no es una Room (heredala de scenes/interiors/room.tscn)." % name)
 		return
 	_room.name = "Interior"
+	_room.shape = interior_shape
 	_room.auto_radius = _radius
+	_room.auto_rect = _half * 2.0 * interior_rect_fit
 	_room.door_angle_deg = door_angle_deg
 	_room.door_width = door_width
 	_room.position = _centre
@@ -202,17 +208,15 @@ func _build_interior() -> void:
 	_room.occupant_entered.connect(_on_room_occupant_changed)
 	_room.occupant_exited.connect(_on_room_occupant_changed)
 
-	var door_rad := deg_to_rad(door_angle_deg)
-	var dir := Vector2(sin(door_rad), cos(door_rad))
-	# Zona de la puerta (dentro Y fuera) en la cara del edificio: prompt Entrar/Salir.
-	# Cuelga del edificio, no de la habitacion, para estar activa tambien estando fuera.
+	# Zona de la puerta (dentro Y fuera) en el punto de la puerta de la habitacion: prompt
+	# Entrar/Salir. Cuelga del edificio, no de la habitacion, para estar activa tambien fuera.
+	var dp := _room.door_point()
 	_door = InteractionZone.new()
 	_door.name = "DoorZone"
 	_door.radius = 1.7
 	_door.height = 0.0
 	_door.interact_priority = 2
-	var d := minf(_edge_distance(dir), _radius + door_width)
-	_door.position = _centre + Vector3(dir.x * d, 0.5, dir.y * d)
+	_door.position = _centre + Vector3(dp.x, 0.5, dp.y)
 	add_child(_door)
 
 
