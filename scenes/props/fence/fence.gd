@@ -6,6 +6,7 @@ extends Path3D
 ## bucle con `curve.closed` para un corral) y se reconstruye sola. Postes y travesanos son
 ## MultiMesh con el shader de madera del banco (semilla por instancia); colision por tramo.
 ## La altura de los puntos se ignora: todo va a la altura de este nodo.
+## Puertas: anade hijos FenceGate y arrastralos cerca de la curva; la valla les abre hueco.
 
 const WOOD_SHADER := preload("res://scenes/props/bench/shaders/wood.gdshader")
 
@@ -137,25 +138,73 @@ func _clear() -> void:
 	_body = null
 
 
-## Puntos de poste a lo largo de la curva (locales a este nodo, y = 0) y direccion.
-func _post_points() -> Array:
-	var out := []
+func _gates() -> Array[FenceGate]:
+	var out: Array[FenceGate] = []
+	for c in get_children():
+		if c is FenceGate:
+			out.append(c)
+	return out
+
+
+func _point_at(d: float, length: float) -> Dictionary:
+	d = fposmod(d, length) if curve.closed else clampf(d, 0.0, length)
+	var p := curve.sample_baked(d)
+	var q := curve.sample_baked(minf(d + 0.05, length)) if d + 0.05 <= length else curve.sample_baked(maxf(d - 0.05, 0.0))
+	var dir := q - p if d + 0.05 <= length else p - q
+	dir.y = 0.0
+	return {"pos": Vector3(p.x, 0.0, p.z), "dir": dir.normalized() if dir.length() > 0.001 else Vector3.FORWARD}
+
+
+## Tramos de valla: cada uno una lista de postes {pos, dir}. Sin puertas es un solo tramo
+## (y `loop` = true si la curva esta cerrada: el ultimo poste enlaza con el primero).
+## Con puertas, la curva se corta en cada hueco y hay un poste justo a cada lado.
+func _sections() -> Dictionary:
+	var result := {"sections": [], "loop": false}
 	if curve == null or curve.point_count < 2:
-		return out
+		return result
 	var length := curve.get_baked_length()
 	if length < 0.1:
-		return out
-	var n := maxi(1, int(round(length / post_spacing)))
-	var closed := curve.closed
-	var count := n if closed else n + 1
-	for i in count:
-		var d := length * float(i) / float(n)
-		var p := curve.sample_baked(minf(d, length))
-		var q := curve.sample_baked(minf(d + 0.05, length)) if d + 0.05 <= length else curve.sample_baked(maxf(d - 0.05, 0.0))
-		var dir := q - p if d + 0.05 <= length else p - q
-		dir.y = 0.0
-		out.append({"pos": Vector3(p.x, 0.0, p.z), "dir": dir.normalized() if dir.length() > 0.001 else Vector3.FORWARD})
-	return out
+		return result
+	# Huecos [inicio, fin] en distancia sobre la curva, ordenados; la puerta se pega ahi.
+	var gaps := []
+	for gate in _gates():
+		var d := curve.get_closest_offset(gate.position)
+		var half := minf(gate.width * 0.5, length * 0.25)
+		gaps.append({"a": d - half, "b": d + half, "gate": gate, "d": d})
+	gaps.sort_custom(func(x, y): return x.a < y.a)
+	var ranges := []  # [inicio, fin] de tramos con valla
+	if gaps.is_empty():
+		ranges.append([0.0, length])
+		result.loop = curve.closed
+	elif curve.closed:
+		for i in gaps.size():
+			var start: float = gaps[i].b
+			var end: float = gaps[(i + 1) % gaps.size()].a
+			if i == gaps.size() - 1:
+				end += length  # vuelve a la primera puerta dando la vuelta
+			ranges.append([start, end])
+	else:
+		var cursor := 0.0
+		for g in gaps:
+			ranges.append([cursor, maxf(g.a, cursor)])
+			cursor = g.b
+		ranges.append([cursor, length])
+	for r in ranges:
+		var span: float = r[1] - r[0]
+		if span < 0.05:
+			continue
+		var n := maxi(1, int(round(span / post_spacing)))
+		var count := n + 1
+		if result.loop and gaps.is_empty():
+			count = n  # bucle: el ultimo poste es el primero
+		var pts := []
+		for i in count:
+			pts.append(_point_at(r[0] + span * float(i) / float(n), length))
+		result.sections.append(pts)
+	for g in gaps:
+		var at: Dictionary = _point_at(g.d, length)
+		g.gate.snap_to(at.pos, at.dir, post_height, rail_radius, rail_span)
+	return result
 
 
 func _rebuild() -> void:
@@ -163,20 +212,34 @@ func _rebuild() -> void:
 		return
 	_building = true
 	_clear()
-	var points := _post_points()
-	if points.size() >= 2 or (points.size() == 1 and curve.closed):
+	var data := _sections()
+	var sections: Array = data.sections
+	if not sections.is_empty():
 		var rng := RandomNumberGenerator.new()
 		rng.seed = seed if seed != 0 else hash(global_position.snapped(Vector3.ONE * 0.01))
 		_post_mat = _make_material()
 		_rail_mat = _make_material()
-		_build_posts(points, rng)
-		_build_rails(points, rng)
+		_build_posts(sections, rng)
+		_build_rails(sections, data.loop, rng)
 		if collision_enabled:
-			_build_collision(points)
+			_build_collision(sections, data.loop)
 	_building = false
 
 
-func _build_posts(points: Array, rng: RandomNumberGenerator) -> void:
+## Pares (a, b) de postes consecutivos de todos los tramos.
+func _segments(sections: Array, loop: bool) -> Array:
+	var out := []
+	for pts in sections:
+		var segs: int = pts.size() if loop else pts.size() - 1
+		for s in segs:
+			out.append([pts[s].pos, pts[(s + 1) % pts.size()].pos])
+	return out
+
+
+func _build_posts(sections: Array, rng: RandomNumberGenerator) -> void:
+	var points := []
+	for pts in sections:
+		points.append_array(pts)
 	var mesh := CylinderMesh.new()
 	mesh.top_radius = post_radius
 	mesh.bottom_radius = post_radius
@@ -204,11 +267,11 @@ func _build_posts(points: Array, rng: RandomNumberGenerator) -> void:
 	add_child(_posts)
 
 
-func _build_rails(points: Array, rng: RandomNumberGenerator) -> void:
+func _build_rails(sections: Array, loop: bool, rng: RandomNumberGenerator) -> void:
 	if rails <= 0:
 		return
-	var segs := points.size() if curve.closed else points.size() - 1
-	if segs <= 0:
+	var segments := _segments(sections, loop)
+	if segments.is_empty():
 		return
 	var mesh := CylinderMesh.new()
 	mesh.top_radius = rail_radius
@@ -221,11 +284,11 @@ func _build_rails(points: Array, rng: RandomNumberGenerator) -> void:
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_custom_data = true
 	mm.mesh = mesh
-	mm.instance_count = segs * rails
+	mm.instance_count = segments.size() * rails
 	var idx := 0
-	for s in segs:
-		var a: Vector3 = points[s].pos
-		var b: Vector3 = points[(s + 1) % points.size()].pos
+	for seg in segments:
+		var a: Vector3 = seg[0]
+		var b: Vector3 = seg[1]
 		var along := b - a
 		var len := along.length()
 		if len < 0.01:
@@ -255,17 +318,17 @@ func _build_rails(points: Array, rng: RandomNumberGenerator) -> void:
 	add_child(_rails)
 
 
-func _build_collision(points: Array) -> void:
-	var segs := points.size() if curve.closed else points.size() - 1
-	if segs <= 0:
+func _build_collision(sections: Array, loop: bool) -> void:
+	var segments := _segments(sections, loop)
+	if segments.is_empty():
 		return
 	_body = StaticBody3D.new()
 	_body.name = "Collision"
 	_body.collision_layer = 1
 	_body.collision_mask = 0
-	for s in segs:
-		var a: Vector3 = points[s].pos
-		var b: Vector3 = points[(s + 1) % points.size()].pos
+	for seg in segments:
+		var a: Vector3 = seg[0]
+		var b: Vector3 = seg[1]
 		var along := b - a
 		var len := along.length()
 		if len < 0.01:

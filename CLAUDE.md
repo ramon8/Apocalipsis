@@ -268,6 +268,14 @@ una semilla por instancia en `INSTANCE_CUSTOM.x`. Para escalar instancias de un
 `MultiMesh` a lo largo de su eje usa `basis * Basis.from_scale(...)`: `Basis.scaled()`
 escala en ejes globales y estira en la dirección equivocada.
 
+**Puertas.** `FenceGate` (`fence_gate.gd`) es un `Node3D` hijo de la valla: arrástralo cerca
+de la curva y la valla lo pega al punto más cercano, corta el hueco de `width` y pone un
+poste a cada lado. La puerta construye su hoja (dos travesaños, montante y diagonal) con
+bisagra en el poste izquierdo (`hinge_right` para el otro), la abre y cierra con la E vía
+`InteractionZone` (tween `swing_time`, ángulo `open_angle_deg`, negativo = hacia dentro) y
+mueve su colisión con la hoja. La valla se regenera por tramos entre puertas; con la curva
+cerrada y puertas, los tramos dan la vuelta hasta la primera puerta.
+
 **Capturas de pantalla.** Headless no compila shaders. Para validar un shader o ver el
 resultado sin abrir el editor:
 
@@ -275,7 +283,8 @@ resultado sin abrir el editor:
 SCREENSHOT_PATH=out.png SCREENSHOT_POS="5,-13" SCREENSHOT_ZOOM=14 godot --path . --resolution 1280x720 --quit-after 500 tests/screenshot.tscn
 ```
 
-`SCREENSHOT_POS` coloca al jugador (y la cámara) en ese XZ, `SCREENSHOT_ZOOM` acerca la
+`SCREENSHOT_SET="Gate:open=true;Otro:prop=valor"` fija propiedades por nombre de nodo antes
+de capturar. `SCREENSHOT_POS` coloca al jugador (y la cámara) en ese XZ, `SCREENSHOT_ZOOM` acerca la
 cámara (menor = más cerca, 55 es el valor de juego); `SCREENSHOT_MASK=mask.png`
 vuelca además la máscara de caminos. Abre una ventana unos segundos.
 
