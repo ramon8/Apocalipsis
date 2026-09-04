@@ -15,8 +15,8 @@ extends Node3D
 	set(v):
 		open = v
 		_animate()
-## Angulo al que abre (grados, hacia -Z = fuera). Negativo abre hacia dentro.
-@export_range(-150.0, 150.0, 1.0) var open_angle_deg := 100.0
+## Angulo al que abre (grados). Siempre se abre hacia el lado contrario al jugador.
+@export_range(30.0, 150.0, 1.0) var open_angle_deg := 100.0
 @export_range(0.1, 3.0, 0.05) var swing_time := 0.6
 ## Bisagra en el poste de la derecha en vez del de la izquierda.
 @export var hinge_right := false:
@@ -35,6 +35,7 @@ var _post_height := 1.05
 var _rail_radius := 0.045
 var _rail_span := Vector2(0.4, 0.85)
 var _snapping := false
+var _open_dir := 1.0  # +1 / -1: sentido de giro de la ultima apertura (lejos del jugador)
 
 
 func _ready() -> void:
@@ -113,7 +114,8 @@ func rebuild() -> void:
 	shape.position = Vector3(sign * leaf_len * 0.5, _post_height * 0.5, 0.0)
 	_body.add_child(shape)
 	_leaf.add_child(_body)
-	_leaf.rotation.y = deg_to_rad(open_angle_deg) * sign if open else 0.0
+	_leaf.rotation.y = deg_to_rad(open_angle_deg) * _open_dir if open else 0.0
+	_body.collision_layer = 0 if open else 1
 	if not Engine.is_editor_hint():
 		_zone = InteractionZone.new()
 		_zone.name = "InteractionZone"
@@ -141,15 +143,23 @@ func _cylinder(radius: float, length: float, mat: Material, pos: Vector3, rot: V
 func _animate() -> void:
 	if _leaf == null:
 		return
-	var sign := -1.0 if hinge_right else 1.0
-	var target := deg_to_rad(open_angle_deg) * sign if open else 0.0
+	var target := deg_to_rad(open_angle_deg) * _open_dir if open else 0.0
 	if Engine.is_editor_hint() or not is_inside_tree():
 		_leaf.rotation.y = target
+		_body.collision_layer = 0 if open else 1
 		return
 	if _tween and _tween.is_valid():
 		_tween.kill()
+	# Abierta no bloquea: la colision se quita al empezar a abrir y vuelve al terminar de
+	# cerrar (asi no atrapa a quien este en el hueco mientras se cierra).
+	if open:
+		_body.collision_layer = 0
 	_tween = create_tween()
 	_tween.tween_property(_leaf, "rotation:y", target, swing_time).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	if not open:
+		_tween.tween_callback(func() -> void:
+			if is_instance_valid(_body) and not open:
+				_body.collision_layer = 1)
 
 
 # ------------------------------------------------------------------ InteractionZone
@@ -158,7 +168,13 @@ func interaction_prompt(_player: Player) -> String:
 	return prompt_close_text if open else prompt_open_text
 
 
-func interact_with(_player: Player) -> void:
+func interact_with(player: Player) -> void:
+	if not open:
+		# Girar hacia el lado contrario al jugador. La punta de la hoja (extremo +X con
+		# bisagra izquierda) se va a -Z con angulo positivo; con bisagra derecha, al reves.
+		var player_z := to_local(player.global_position).z
+		var away := 1.0 if player_z > 0.0 else -1.0
+		_open_dir = away * (-1.0 if hinge_right else 1.0)
 	open = not open
 	if _zone:
 		_zone.refresh_prompt()

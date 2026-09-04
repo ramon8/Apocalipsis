@@ -15,6 +15,7 @@ godot --headless --path . --quit-after 90          # carga main.tscn: errores de
 godot --headless --path . --quit-after 3000 tests/player_actions_test.tscn
 godot --headless --path . --quit-after 3000 tests/interaction_zone_test.tscn
 godot --headless --path . --quit-after 3000 tests/dialogue_test.tscn
+godot --headless --path . --quit-after 3000 tests/fence_gate_test.tscn
 ```
 
 - Los tests son escenas (`tests/*.tscn` con un script `extends Node`) para que carguen los
@@ -271,9 +272,9 @@ escala en ejes globales y estira en la dirección equivocada.
 **Puertas.** `FenceGate` (`fence_gate.gd`) es un `Node3D` hijo de la valla: arrástralo cerca
 de la curva y la valla lo pega al punto más cercano, corta el hueco de `width` y pone un
 poste a cada lado. La puerta construye su hoja (dos travesaños, montante y diagonal) con
-bisagra en el poste izquierdo (`hinge_right` para el otro), la abre y cierra con la E vía
-`InteractionZone` (tween `swing_time`, ángulo `open_angle_deg`, negativo = hacia dentro) y
-mueve su colisión con la hoja. La valla se regenera por tramos entre puertas; con la curva
+bisagra en el poste izquierdo (`hinge_right` para el otro) y la abre y cierra con la E vía
+`InteractionZone` (tween `swing_time`, ángulo `open_angle_deg`). Siempre se abre hacia el
+lado contrario al jugador. Abierta no colisiona; la colisión vuelve al terminar de cerrar. La valla se regenera por tramos entre puertas; con la curva
 cerrada y puertas, los tramos dan la vuelta hasta la primera puerta.
 
 **Capturas de pantalla.** Headless no compila shaders. Para validar un shader o ver el
