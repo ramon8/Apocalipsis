@@ -13,8 +13,9 @@ signal stepped(running: bool)
 
 @export var enabled := true
 @export var stream: AudioStream = preload("res://assets/audio/step.wav")
-## Pisada con agua (chapoteo). Se usa mientras `in_water` es true.
-@export var water_stream: AudioStream = preload("res://assets/audio/splash.wav")
+## Pisada con agua (chapoteo). Se usa mientras `in_water` es true. Vacio = con agua las
+## pisadas van en silencio (desactivado de momento; el clip esta en assets/audio/splash.wav).
+@export var water_stream: AudioStream
 @export_range(-40.0, 6.0, 0.5) var water_volume_db := -15.0
 ## Pares de huesos. Cada par dispara sus propios pasos.
 @export var bone_pairs: Array[PackedStringArray] = [PackedStringArray(["foot.l", "foot.r"])]
@@ -113,6 +114,8 @@ func _play(running: bool) -> void:
 	if not is_instance_valid(_player):
 		return
 	stepped.emit(running)
+	if in_water and _wet == null:
+		return  # sin clip de agua: chapoteo mudo (la onda y la estela ya lo cuentan)
 	var wet := in_water and _wet != null
 	_player.stream = _wet if wet else _dry
 	_player.volume_db = (water_volume_db if wet else volume_db) + (run_volume_boost_db if running else 0.0)
