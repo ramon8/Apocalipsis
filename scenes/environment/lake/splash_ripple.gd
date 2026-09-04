@@ -19,6 +19,9 @@ static func spawn(parent: Node, world_pos: Vector3, size := 1.0, life := 0.9, ri
 	r.mesh = quad
 	r._mat = ShaderMaterial.new()
 	r._mat.shader = SHADER
+	# Transparente sobre otro transparente (el agua): Godot ordena por distancia del origen a
+	# la camara y el centro del lago suele quedar "delante". La prioridad fuerza la onda encima.
+	r._mat.render_priority = 2
 	r.material_override = r._mat
 	r._mat.set_shader_parameter("rings", float(rings))
 	if lake and lake.has_method("mask_texture") and lake.mask_texture():
