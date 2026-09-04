@@ -171,7 +171,7 @@ func _config_hash() -> int:
 			grass_base_color, grass_tip_color, grass_variation_color,
 			grass_variation_amount, grass_blade_width, grass_billboard_tilt,
 			editor_preview, preview_radius,
-			path_clearance, paths._content_hash() if paths else 0])
+			path_clearance, paths.version if paths else 0])
 
 
 func _build_editor_preview() -> void:

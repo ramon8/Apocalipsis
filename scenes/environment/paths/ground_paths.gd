@@ -41,10 +41,16 @@ var _lines_root: Node2D
 var _dirty := true
 var _last_hash := 0
 var _editor_timer := 0.0
-# Cache para consultas por CPU: por camino, {pts: PackedVector2Array (mundo XZ), r: float, bbox: Rect2}
-var _segments: Array = []
-var _segments_hash := 0
-
+## Sube cada vez que se repinta: los sistemas que dependen de los caminos (ScatterWorld)
+## lo usan como clave de cache barata.
+var version := 0
+# Rejilla de distancias para consultas por CPU (clearance_at): metros por celda y valores.
+var _grid: PackedFloat32Array
+var _grid_dirty := true
+var _grid_res := 0
+const GRID_M_PER_CELL := 0.5
+## Mas alla de esta distancia del borde del camino la rejilla no distingue (devuelve INF).
+const GRID_MAX_DIST := 8.0
 
 func _ready() -> void:
 	_build_viewport()
@@ -72,6 +78,7 @@ func _on_child_changed(node: Node) -> void:
 ## Pide un repintado (se hace en el siguiente _process).
 func mark_dirty() -> void:
 	_dirty = true
+	_grid_dirty = true
 
 
 func _process(delta: float) -> void:
@@ -129,49 +136,62 @@ func _content_hash() -> int:
 
 
 ## Holgura (m) desde un punto del mundo (XZ) hasta el borde exterior del camino mas
-## cercano: negativo = dentro del camino (o de su borde desgastado). INF si no hay caminos.
-## Lo usan los sistemas de dispersion para no plantar arboles en el camino.
+## cercano: negativo = dentro del camino (o de su borde desgastado). INF si esta a mas de
+## GRID_MAX_DIST o fuera de la region. Lectura O(1) sobre una rejilla precalculada:
+## la usan los sistemas de dispersion para no plantar arboles en el camino.
 func clearance_at(world_xz: Vector2) -> float:
-	_ensure_segments()
-	var best := INF
-	for seg in _segments:
-		var bbox: Rect2 = seg.bbox
-		if not bbox.grow(maxf(0.0, best)).has_point(world_xz):
-			continue
-		var pts: PackedVector2Array = seg.pts
-		for i in pts.size() - 1:
-			var d := _point_segment_distance(world_xz, pts[i], pts[i + 1])
-			best = minf(best, d - seg.r)
-	return best
+	if _grid_dirty:
+		_build_grid()
+	var local := world_xz - Vector2(global_position.x, global_position.z) + region_size * 0.5
+	var cx := int(local.x / GRID_M_PER_CELL)
+	var cy := int(local.y / GRID_M_PER_CELL)
+	if cx < 0 or cy < 0 or cx >= _grid_res or cy >= _grid_res:
+		return INF
+	return _grid[cy * _grid_res + cx]
 
 
-static func _point_segment_distance(p: Vector2, a: Vector2, b: Vector2) -> float:
-	var ab := b - a
-	var l2 := ab.length_squared()
-	if l2 <= 0.000001:
-		return p.distance_to(a)
-	var t := clampf((p - a).dot(ab) / l2, 0.0, 1.0)
-	return p.distance_to(a + ab * t)
-
-
-func _ensure_segments() -> void:
-	var h := _content_hash()
-	if h == _segments_hash:
-		return
-	_segments_hash = h
-	_segments.clear()
+## Rejilla de distancia al borde de los caminos: cada punto de la curva "estampa" un disco
+## de radio (borde + GRID_MAX_DIST) guardando la distancia minima. Una sola pasada al
+## cargar o al editar; las consultas despues son una lectura.
+func _build_grid() -> void:
+	_grid_dirty = false
+	_grid_res = int(ceil(region_size.x / GRID_M_PER_CELL))
+	_grid = PackedFloat32Array()
+	_grid.resize(_grid_res * _grid_res)
+	_grid.fill(INF)
+	var origin := Vector2(global_position.x, global_position.z) - region_size * 0.5
 	for path in _paths():
 		if path.curve == null or path.curve.point_count < 2:
 			continue
-		var pts := PackedVector2Array()
-		var bbox := Rect2()
-		for p in path.curve.get_baked_points():
-			var w := path.global_transform * p
-			var xz := Vector2(w.x, w.z)
-			pts.append(xz)
-			bbox = Rect2(xz, Vector2.ZERO) if pts.size() == 1 else bbox.expand(xz)
 		var r := path.width * 0.5 * edge_spread
-		_segments.append({"pts": pts, "r": r, "bbox": bbox.grow(r)})
+		var reach := r + GRID_MAX_DIST
+		var reach_cells := int(ceil(reach / GRID_M_PER_CELL))
+		# Puntos cada ~GRID_M_PER_CELL: suficiente para un disco por punto sin huecos.
+		var baked := path.curve.get_baked_points()
+		var stride := maxi(1, int(GRID_M_PER_CELL / maxf(path.curve.bake_interval, 0.01)))
+		var i := 0
+		while i < baked.size():
+			var w := path.global_transform * baked[i]
+			var c := (Vector2(w.x, w.z) - origin) / GRID_M_PER_CELL
+			var ci := Vector2i(int(c.x), int(c.y))
+			for gy in range(maxi(ci.y - reach_cells, 0), mini(ci.y + reach_cells + 1, _grid_res)):
+				for gx in range(maxi(ci.x - reach_cells, 0), mini(ci.x + reach_cells + 1, _grid_res)):
+					var d := (Vector2(gx + 0.5, gy + 0.5) - c).length() * GRID_M_PER_CELL - r
+					var idx := gy * _grid_res + gx
+					if d < _grid[idx]:
+						_grid[idx] = d
+			i += stride
+		# Ultimo punto siempre (el stride puede saltarselo).
+		if baked.size() > 0 and (baked.size() - 1) % stride != 0:
+			var w := path.global_transform * baked[baked.size() - 1]
+			var c := (Vector2(w.x, w.z) - origin) / GRID_M_PER_CELL
+			var ci := Vector2i(int(c.x), int(c.y))
+			for gy in range(maxi(ci.y - reach_cells, 0), mini(ci.y + reach_cells + 1, _grid_res)):
+				for gx in range(maxi(ci.x - reach_cells, 0), mini(ci.x + reach_cells + 1, _grid_res)):
+					var d := (Vector2(gx + 0.5, gy + 0.5) - c).length() * GRID_M_PER_CELL - r
+					var idx := gy * _grid_res + gx
+					if d < _grid[idx]:
+						_grid[idx] = d
 
 
 ## Metros -> pixel de la mascara.
@@ -214,6 +234,8 @@ func _repaint() -> void:
 			line.default_color = Color(v, v, v, 1.0)
 			_lines_root.add_child(line)
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+	_grid_dirty = true
+	version += 1
 	_apply_to_ground()
 
 

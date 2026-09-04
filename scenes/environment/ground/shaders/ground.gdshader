@@ -87,6 +87,34 @@ float vnoise(vec2 p) {
 	return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
+// Ruido de gradiente (Perlin 2D con gradientes por hash), en [0,1]. Sin la rejilla
+// axial del ruido de valor: al umbralizarlo no salen bordes rectos.
+vec2 grad2(vec2 i) {
+	float a = hash21(i) * 6.2831853;
+	return vec2(cos(a), sin(a));
+}
+
+float gnoise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	vec2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+	float a = dot(grad2(i), f);
+	float b = dot(grad2(i + vec2(1.0, 0.0)), f - vec2(1.0, 0.0));
+	float c = dot(grad2(i + vec2(0.0, 1.0)), f - vec2(0.0, 1.0));
+	float d = dot(grad2(i + vec2(1.0, 1.0)), f - vec2(1.0, 1.0));
+	return mix(mix(a, b, u.x), mix(c, d, u.x), u.y) * 0.7 + 0.5;
+}
+
+// Dos octavas rotadas + deformacion del dominio: parches organicos sin direccion dominante.
+float organic(vec2 p, float scale) {
+	const mat2 rot = mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8));
+	vec2 q = p / scale;
+	vec2 warp = vec2(gnoise(q * 0.7 + 13.0), gnoise(q * 0.7 + 71.0)) - 0.5;
+	q += warp * 0.9;
+	float v = gnoise(q) * 0.65 + gnoise(rot * q * 2.1 + 5.0) * 0.35;
+	return clamp((v - 0.5) * 1.8 + 0.5, 0.0, 1.0);  // recuperar contraste
+}
+
 float quantize(float v) {
 	float n = float(max(levels - 1, 1));
 	return floor(v * n + 0.5) / n;
@@ -125,7 +153,7 @@ void fragment() {
 
 	// --- caminos: mascara + ruido en el umbral = borde desgastado.
 	float mask = path_mask_at(texel);
-	float edge_n = vnoise(texel / path_edge_scale + 101.0) * 0.6 + vnoise(texel / path_edge_scale * 2.7 + 57.0) * 0.4;
+	float edge_n = organic(texel + 101.0, path_edge_scale);
 	float threshold = 0.5 + (edge_n - 0.5) * path_edge_noise;
 	float path = (mask > 0.0 && mask >= threshold) ? 1.0 : 0.0;
 
@@ -133,7 +161,7 @@ void fragment() {
 	float grass = 0.0;
 	vec3 grass_col = grass_color.rgb;
 	if (grass_enabled) {
-		float g = vnoise(texel / grass_scale + 3.0) * 0.55 + vnoise(texel / grass_detail_scale + 31.0) * 0.45;
+		float g = organic(texel + 3.0, grass_scale) * 0.6 + organic(texel + 31.0, grass_detail_scale) * 0.4;
 		float thr = 1.0 - grass_coverage;
 		// Borde punteado: en una banda alrededor del umbral cada texel decide al azar, asi el
 		// parche se deshilacha en matas sueltas en vez de cortarse en bloque.
@@ -151,7 +179,7 @@ void fragment() {
 			grass *= (dither_r < 1.0 - mask / grass_path_margin) ? 1.0 : 0.0;
 		}
 		grass *= 1.0 - path;
-		float dark = vnoise(texel / (grass_detail_scale * 1.7) + 7.0);
+		float dark = organic(texel + 7.0, grass_detail_scale * 1.7);
 		float in_core = (g > thr + band + 0.08) ? 1.0 : 0.0;  // el tono oscuro solo en el interior
 		grass_col = mix(grass_color.rgb, grass_dark_color.rgb, in_core * ((dark > 1.0 - grass_dark_amount) ? 1.0 : 0.0));
 		grass_col *= 1.0 + grain * 2.0 * grain_strength;

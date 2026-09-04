@@ -245,8 +245,14 @@ repinta solo al mover puntos en el editor.
   altura de los puntos se ignora. Solo cuenta lo que cae dentro de `region_size`
   (256 m centrados en el nodo por defecto; muévelo o amplíalo si el pueblo crece).
 - `GroundPaths.clearance_at(xz)` da la distancia al borde del camino más cercano
-  (negativa dentro). `ScatterWorld` lo usa con `paths` y `path_clearance` para no plantar
-  árboles ni arbustos encima. Cualquier dispersión nueva debería hacer lo mismo.
+  (negativa dentro, `INF` a más de 8 m). Es una lectura sobre una rejilla de 0.5 m que se
+  precalcula una vez por edición: barata aunque la llames cien mil veces al cargar.
+  `ScatterWorld` lo usa con `paths` y `path_clearance` para no plantar árboles ni arbustos
+  encima. Cualquier dispersión nueva debería hacer lo mismo. `GroundPaths.version` sube en
+  cada repintado y sirve como clave de caché.
+- El ruido de la hierba y del borde del camino es de gradiente con dominio deformado
+  (`organic()` en el shader). No uses `vnoise` (ruido de valor) para umbralizar parches:
+  deja bordes rectos alineados a los ejes.
 - Hierba: `grass_coverage`, `grass_scale` (tamaño de parche), `grass_edge_dither` (borde
   en matas), `grass_path_margin` (cuánto se aparta del camino). La hierba de blades del
   `ScatterWorld` está desactivada (`grass_enabled = false`): metía ruido.
