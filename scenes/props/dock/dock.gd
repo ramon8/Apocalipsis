@@ -345,11 +345,14 @@ func _build_collision(length: float) -> void:
 			continue
 		var dir := along / len
 		var side := Vector3(dir.z, 0.0, -dir.x).normalized() if absf(dir.y) < 0.999 else Vector3.RIGHT
-		var up := side.cross(dir).normalized()
+		var up := dir.cross(side).normalized()  # dextrogiro: side x up = dir
 		var shape := CollisionShape3D.new()
 		var box := BoxShape3D.new()
-		box.size = Vector3(deck_width, 0.12, len + 0.05)
+		# En la rampa la caja se alarga un poco hacia atras para que arranque bajo el suelo y
+		# no quede un escalon en la entrada.
+		var extra := 0.25 if i == 0 and ramp_length > 0.0 else 0.0
+		box.size = Vector3(deck_width, 0.12, len + 0.05 + extra)
 		shape.shape = box
-		shape.transform = Transform3D(Basis(side, up, dir), (a + b) * 0.5 - up * 0.06)
+		shape.transform = Transform3D(Basis(side, up, dir), (a + b) * 0.5 - up * 0.06 - dir * extra * 0.5)
 		_body.add_child(shape)
 	add_child(_body)

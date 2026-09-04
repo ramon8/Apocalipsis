@@ -17,6 +17,7 @@ godot --headless --path . --quit-after 3000 tests/interaction_zone_test.tscn
 godot --headless --path . --quit-after 3000 tests/dialogue_test.tscn
 godot --headless --path . --quit-after 3000 tests/fence_gate_test.tscn
 godot --headless --path . --quit-after 3000 tests/wading_test.tscn
+godot --headless --path . --quit-after 3000 tests/dock_test.tscn
 ```
 
 - Los tests son escenas (`tests/*.tscn` con un script `extends Node`) para que carguen los
