@@ -17,6 +17,8 @@ signal dropped(player: Player)
 @export var prompt_place_text := "Poner al fuego"
 ## Donde cae al soltarlo, delante del jugador (metros).
 @export var drop_forward := 0.9
+## Accion del jugador al coger y al soltar (agacharse: el apex es el momento del cambio).
+@export var grab_action: PlayerAction = preload("res://scenes/player/actions/crouch_grab.tres")
 
 @export_group("Audio")
 ## Suena al cogerlo y al dejarlo.
@@ -131,17 +133,17 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _begin_pickup(player: Player) -> void:
-	if not player.play_crouch_action():
+	if not player.start_action(grab_action):
 		return
 	if _lift_player:
 		_lift_player.play()
 	_busy = true
 	InteractionManager.leave(self)
 	_prompt.pop_out()
-	player.channel_apex.connect(_on_pickup_apex.bind(player), CONNECT_ONE_SHOT)
+	player.action_apex.connect(_on_pickup_apex.bind(player), CONNECT_ONE_SHOT)
 
 
-func _on_pickup_apex(_kind: String, player: Player) -> void:
+func _on_pickup_apex(_kind: StringName, player: Player) -> void:
 	_carrier = player
 	InteractionManager.enter(self, -1)  # llevado: siempre es el interactuable actual
 	if is_instance_valid(_resting_fire):
@@ -152,7 +154,7 @@ func _on_pickup_apex(_kind: String, player: Player) -> void:
 	position = Vector3.ZERO
 	rotation = Vector3.ZERO
 	player.holding = true
-	player.pickup_finished.connect(_on_sequence_done, CONNECT_ONE_SHOT)
+	player.action_finished.connect(_on_sequence_done, CONNECT_ONE_SHOT)
 	picked_up.emit(player)
 	_prompt.action_text = prompt_drop_text
 	_prompt.show_at()
@@ -160,16 +162,16 @@ func _on_pickup_apex(_kind: String, player: Player) -> void:
 
 func _begin_drop() -> void:
 	var player := _carrier
-	if not player.play_crouch_action():
+	if not player.start_action(grab_action):
 		return
 	if _lift_player:
 		_lift_player.play()
 	_busy = true
 	_prompt.pop_out()
-	player.channel_apex.connect(_on_drop_apex.bind(player), CONNECT_ONE_SHOT)
+	player.action_apex.connect(_on_drop_apex.bind(player), CONNECT_ONE_SHOT)
 
 
-func _on_drop_apex(_kind: String, player: Player) -> void:
+func _on_drop_apex(_kind: StringName, player: Player) -> void:
 	var fire := _find_lit_campfire()  # antes de soltar _carrier: la busqueda lo usa
 	_carrier = null
 	InteractionManager.leave(self)
@@ -182,11 +184,11 @@ func _on_drop_apex(_kind: String, player: Player) -> void:
 		global_position = fire.global_position + Vector3(0.0, fire.pot_rest_height, 0.0)
 		fire.place_pot(self)
 	else:
-		var pos := player.global_position + player._facing_direction() * drop_forward
+		var pos := player.global_position + player.facing_direction() * drop_forward
 		global_position = Vector3(pos.x, 0.0, pos.z)
-	global_rotation = Vector3(0.0, player._model.global_rotation.y, 0.0)
+	global_rotation = Vector3(0.0, player.facing_yaw(), 0.0)
 	_set_physics_active(true)
-	player.pickup_finished.connect(_on_sequence_done, CONNECT_ONE_SHOT)
+	player.action_finished.connect(_on_sequence_done, CONNECT_ONE_SHOT)
 	dropped.emit(player)
 
 
@@ -200,7 +202,7 @@ func _find_lit_campfire() -> Node3D:
 	return null
 
 
-func _on_sequence_done() -> void:
+func _on_sequence_done(_kind: StringName) -> void:
 	_busy = false
 	_update_prompt()
 

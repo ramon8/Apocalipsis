@@ -124,13 +124,10 @@ transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, 38.98434, 0
 walk_speed = 2.0
 run_speed = 3.8
 acceleration = 24.0
-carry_bones = PackedStringArray("hand.l", "hand.r")
 blend_time = 0.5
 walk_anim_reference_speed = 1.25
 run_anim_reference_speed = 3.0
-foot_bones = PackedStringArray("foot.l", "foot.r")
 hold_bones = PackedStringArray("shoulder.l", "arm.l", "hand.l", "shoulder.r", "arm.r", "hand.r")
-xray_probe_points = PackedVector3Array(0, 1.6, 0, 0, 1, 0, 0, 0.3, 0, 0.3, 1.1, 0, -0.3, 1.1, 0, 0, 1.1, 0.3, 0, 1.1, -0.3)
 
 [node name="CameraRig" parent="World" unique_id=983744173 node_paths=PackedStringArray("target") instance=ExtResource("3_camera")]
 target = NodePath("../Player")

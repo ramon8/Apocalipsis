@@ -1,7 +1,10 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scenes/player/player.gd" id="1_player"]
 [ext_resource type="PackedScene" uid="uid://cybhe7qw8ght0" path="res://assets/models/character/character.glb" id="2_model"]
+[ext_resource type="Script" path="res://scenes/player/components/carry_slot.gd" id="3_carry"]
+[ext_resource type="Script" path="res://scenes/shared/footsteps.gd" id="4_steps"]
+[ext_resource type="Script" path="res://scenes/player/components/xray_visibility.gd" id="5_xray"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -18,3 +21,12 @@ shape = SubResource("CapsuleShape3D_body")
 
 [node name="Model" parent="." instance=ExtResource("2_model")]
 transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
+
+[node name="CarrySlot" type="Node3D" parent="."]
+script = ExtResource("3_carry")
+
+[node name="Footsteps" type="Node" parent="."]
+script = ExtResource("4_steps")
+
+[node name="Xray" type="Node" parent="."]
+script = ExtResource("5_xray")

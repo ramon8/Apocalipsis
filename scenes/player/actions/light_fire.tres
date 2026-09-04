@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="PlayerAction" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/player/actions/player_action.gd" id="1_action"]
+
+[resource]
+script = ExtResource("1_action")
+kind = &"light_fire"
+start_anim = "light_fire_start"
+idle_anim = "light_fire_idle"
+strike_anim = "light_fire"
+end_anim = "light_fire_end"

@@ -162,6 +162,9 @@ var _shout_first := false
 var _farewell_said := false
 var _marker: ExclamationMarker
 var _has_new := true  # tiene dialogo nuevo que el jugador aun no ha oido (marcador "!")
+## Razon con la que este NPC bloquea al jugador mientras le habla (una por NPC: dos
+## dialogos no se pisan el desbloqueo).
+@onready var _lock_reason: StringName = StringName("npc_%d" % get_instance_id())
 
 
 func _ready() -> void:
@@ -363,11 +366,7 @@ func _prepare_materials(node: Node) -> void:
 			var base := mat as BaseMaterial3D
 			if base == null:
 				continue
-			var outline: ShaderMaterial = null
-			if outline_enabled:
-				outline = ShaderMaterial.new()
-				outline.shader = preload("res://scenes/player/shaders/outline.gdshader")
-				outline.set_shader_parameter("color", outline_color)
+			var outline: ShaderMaterial = ModelMaterials.make_outline(outline_color) if outline_enabled else null
 			if randomize_colors and base.albedo_texture:
 				var tint := ShaderMaterial.new()
 				tint.shader = preload("res://scenes/npc/shaders/npc_tint.gdshader")
@@ -389,11 +388,11 @@ func _prepare_materials(node: Node) -> void:
 				tint.next_pass = outline
 				mi.set_surface_override_material(i, tint)
 			else:
-				var copy := base.duplicate() as BaseMaterial3D
-				if nearest_texture_filter:
-					copy.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-				copy.next_pass = outline
-				mi.set_surface_override_material(i, copy)
+				var setup := ModelMaterials.new()
+				setup.nearest = nearest_texture_filter
+				if outline_enabled:
+					setup.with_outline(outline_color)
+				mi.set_surface_override_material(i, setup.prepare(base))
 
 
 func _build_area() -> void:
@@ -546,7 +545,7 @@ func _start_dialogue(player: Player, what: Array[String], auto := false, shout_f
 	if not auto:
 		_has_new = false  # el jugador ha venido a oirlo
 	if is_instance_valid(player):
-		player.movement_locked = true  # mientras te hablan no te mueves
+		player.lock(_lock_reason)  # mientras te hablan no te mueves
 	dialogue_started.emit()
 	_advance()
 
@@ -571,7 +570,7 @@ func _advance() -> void:
 
 func _end_dialogue() -> void:
 	if is_instance_valid(_talking_to):
-		_talking_to.movement_locked = false
+		_talking_to.unlock(_lock_reason)
 	_talking_to = null
 	_line = -1
 	_auto = false

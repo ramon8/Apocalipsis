@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="PlayerAction" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/player/actions/player_action.gd" id="1_action"]
+
+[resource]
+script = ExtResource("1_action")
+kind = &"drop_backpack"
+start_anim = "bp_pickup"
+apex_fraction = 0.5
+reverse = true
+speed = 2.0

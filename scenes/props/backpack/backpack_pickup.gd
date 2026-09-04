@@ -34,6 +34,8 @@ signal picked_up(player: Player)
 @export var prompt_key_text := "E"
 ## Action label shown next to the key in the corner prompt.
 @export var prompt_action_text := "Pick up"
+## Accion del jugador al cogerla (la bolsa desaparece del suelo en el apex).
+@export var pickup_action: PlayerAction = preload("res://scenes/player/actions/pickup_backpack.tres")
 @export var pickup_sound: AudioStream = preload("res://assets/audio/pickupbackpack.wav")
 @export_range(-40.0, 6.0, 0.5) var pickup_volume_db := -8.0
 ## Random pitch range per play (1.1 = ±10%).
@@ -77,12 +79,11 @@ func _build_body() -> void:
 	var mesh_node := MeshInstance3D.new()
 	mesh_node.name = "Mesh"
 	mesh_node.mesh = source.mesh
+	var setup := ModelMaterials.new()  # solo nearest: la bolsa en el suelo no lleva contorno
 	for i in source.get_surface_override_material_count():
 		var mat := source.get_active_material(i)
 		if mat is BaseMaterial3D:
-			var copy := (mat as BaseMaterial3D).duplicate() as BaseMaterial3D
-			copy.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-			mesh_node.set_surface_override_material(i, copy)
+			mesh_node.set_surface_override_material(i, setup.prepare(mat))
 	model.free()
 
 	var aabb := mesh_node.mesh.get_aabb()
@@ -183,14 +184,14 @@ func _grab(player: Player) -> void:
 	InteractionManager.leave(self)
 	_prompt.pop_out()
 	# Play the character's pickup animation; the bag vanishes when the hand reaches it.
-	if player.play_pickup():
-		player.pickup_reached.connect(_on_reached.bind(player), CONNECT_ONE_SHOT)
+	if player.start_action(pickup_action):
+		player.action_apex.connect(_on_reached.bind(player), CONNECT_ONE_SHOT)
 	else:
 		player.show_backpack = true
-		_on_reached(player)
+		_on_reached(pickup_action.kind, player)
 
 
-func _on_reached(player: Player) -> void:
+func _on_reached(_kind: StringName, player: Player) -> void:
 	picked_up.emit(player)
 	if pickup_sound:
 		var sfx := AudioStreamPlayer.new()

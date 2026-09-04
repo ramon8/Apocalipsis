@@ -117,6 +117,8 @@ signal pot_changed(has_pot: bool)
 @export var prompt_key_text := "E"
 @export var prompt_light_text := "Encender"
 @export var prompt_extinguish_text := "Apagar"
+## Accion del jugador durante el minijuego (pose de espera + golpe por pulsacion).
+@export var light_action: PlayerAction = preload("res://scenes/player/actions/light_fire.tres")
 
 @export_group("Pot")
 ## Escala de la llama con un pot encima: mas ancha y mas baja (lamiendo los lados).
@@ -399,7 +401,7 @@ func _start_minigame() -> void:
 	_target_frac = target_size_deg / 360.0
 	_lighting_player = _player_in_range
 	if _lighting_player:
-		_lighting_player.start_fire_lighting()
+		_lighting_player.start_action(light_action)
 	_new_round()
 	_prompt.pop_out()
 	_wheel.show_wheel()
@@ -429,7 +431,7 @@ func _update_minigame(delta: float) -> void:
 func _minigame_press() -> void:
 	_play_flint()
 	if is_instance_valid(_lighting_player):
-		_lighting_player.play_fire_strike()
+		_lighting_player.strike()
 	if _wheel.is_marker_in_target():
 		_hits += 1
 		_wheel.flash()
@@ -485,7 +487,7 @@ func has_pot() -> bool:
 
 func _release_lighting_player() -> void:
 	if is_instance_valid(_lighting_player):
-		_lighting_player.stop_fire_lighting()
+		_lighting_player.stop_action()
 	_lighting_player = null
 
 

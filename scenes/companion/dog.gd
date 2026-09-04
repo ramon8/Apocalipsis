@@ -92,22 +92,6 @@ enum State { FOLLOW, HANG_AROUND, GO_SIT, SIT, GO_STAY, STAY }
 ## Bones the sniff overlay drives.
 @export var head_bones: PackedStringArray = ["Neck", "face", "nose", "ear1.l", "ear2.l", "ear1.r", "ear2.r"]
 
-@export_group("Footsteps")
-@export var footsteps_enabled := true
-@export var footstep_stream: AudioStream = preload("res://assets/audio/step.wav")
-## Base volume. Paws are lighter than boots: keep it well below the player's.
-@export_range(-40.0, 6.0, 0.5) var footstep_volume_db := -28.0
-## Base pitch: a small dog patters higher than the player's steps.
-@export_range(0.5, 2.0, 0.05) var footstep_pitch := 1.35
-@export_range(1.0, 2.0, 0.01) var footstep_random_pitch := 1.15
-@export_range(0.0, 12.0, 0.5) var footstep_random_volume_db := 3.0
-## Minimum seconds between paw sounds (a trot crosses pairs fast).
-@export var footstep_min_interval := 0.08
-@export_range(0.0, 12.0, 0.5) var run_volume_boost_db := 3.0
-## Front paw pair, then back paw pair: a step fires each time a pair crosses heights.
-@export var front_paw_bones: PackedStringArray = ["frontFoot.l", "frontFoot.r"]
-@export var back_paw_bones: PackedStringArray = ["backFoot.l", "backFoot.r"]
-
 @export_group("Bark")
 @export var bark_enabled := true
 @export var bark_stream: AudioStream = preload("res://assets/audio/dog_bark.mp3")
@@ -151,11 +135,7 @@ var _avoid_offset := Vector3.ZERO  # sideways push while stuck against an obstac
 var _perceived_player_speed := 0.0  # player speed as the dog "notices" it (lagged)
 var _react_timer := -1.0  # pause before chasing a leaving player (-1 = unset)
 var _sit_wait := -1.0  # time left hanging around before coming to sit (-1 = unset)
-var _skeleton: Skeleton3D
-var _paw_pairs: Array = []  # [[bone_a, bone_b], ...] resolved to indices
-var _paw_signs: Array[int] = []
-var _step_player: AudioStreamPlayer3D
-var _since_last_step := 0.0
+var _footsteps: FootstepAudio  # nodo hijo "Footsteps" (opcional)
 var _bark_player: AudioStreamPlayer3D
 var _bark_ready_at := 0.0  # Time (s) the cooldown ends
 var _long_chase := false  # this FOLLOW involved a real catch-up run (greet bark on arrival)
@@ -205,7 +185,9 @@ func _ready() -> void:
 		_play(idle_animation)
 	_setup_overlays()
 	_prepare_materials(_model)
-	_setup_footsteps()
+	_footsteps = get_node_or_null("Footsteps") as FootstepAudio
+	if _footsteps:
+		_footsteps.setup(_model.find_child("Skeleton3D", true, false) as Skeleton3D)
 	_setup_bark()
 
 
@@ -235,25 +217,13 @@ func _setup_overlays() -> void:
 	skeleton.add_child(_head_overlay)
 
 
-## Nearest filtering on the imported materials (glTF defaults to linear, which blurs texels).
+## Nearest filtering + contorno en los materiales importados (ver ModelMaterials).
 func _prepare_materials(node: Node) -> void:
-	if node is MeshInstance3D and (nearest_texture_filter or outline_enabled):
-		var mi := node as MeshInstance3D
-		for i in mi.get_surface_override_material_count():
-			var mat := mi.get_active_material(i)
-			if mat is BaseMaterial3D:
-				var copy := (mat as BaseMaterial3D).duplicate() as BaseMaterial3D
-				if nearest_texture_filter:
-					copy.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-				if outline_enabled:
-					var om := ShaderMaterial.new()
-					om.shader = preload("res://scenes/player/shaders/outline.gdshader")
-					om.set_shader_parameter("color", outline_color)
-					om.set_shader_parameter("width_px", outline_width_px)
-					copy.next_pass = om
-				mi.set_surface_override_material(i, copy)
-	for child in node.get_children():
-		_prepare_materials(child)
+	var setup := ModelMaterials.new()
+	setup.nearest = nearest_texture_filter
+	if outline_enabled:
+		setup.with_outline(outline_color, outline_width_px)
+	setup.apply(node)
 
 
 func _physics_process(delta: float) -> void:
@@ -287,7 +257,9 @@ func _physics_process(delta: float) -> void:
 		_update_locomotion_anim(ground_speed)
 	_update_mood(dist, delta)
 	_update_stuck(ground_speed, delta)
-	_update_footsteps(delta)
+	if _footsteps:
+		var locomotion := _current_anim == walk_animation or _current_anim == run_animation
+		_footsteps.tick(delta, locomotion, _current_anim == run_animation)
 
 
 # ------------------------------------------------------------------ state machine
@@ -651,63 +623,7 @@ func _bark(count := 1) -> void:
 		get_tree().create_timer(0.35 * (i + 1)).timeout.connect(_bark_player.play)
 
 
-# ------------------------------------------------------------------ footsteps
-
-func _setup_footsteps() -> void:
-	if not footsteps_enabled or footstep_stream == null:
-		return
-	_skeleton = _model.find_child("Skeleton3D", true, false)
-	if _skeleton == null:
-		return
-	for pair in [front_paw_bones, back_paw_bones]:
-		if pair.size() != 2:
-			continue
-		var a := _skeleton.find_bone(pair[0])
-		var b := _skeleton.find_bone(pair[1])
-		if a < 0 or b < 0:
-			push_warning("Dog: paw bones %s not found; that pair is muted." % [pair])
-			continue
-		_paw_pairs.append([a, b])
-		_paw_signs.append(0)
-	if _paw_pairs.is_empty():
-		return
-	var randomizer := AudioStreamRandomizer.new()
-	randomizer.add_stream(0, footstep_stream)
-	randomizer.random_pitch = footstep_random_pitch
-	randomizer.random_volume_offset_db = footstep_random_volume_db
-	_step_player = AudioStreamPlayer3D.new()
-	_step_player.name = "PawSteps"
-	_step_player.stream = randomizer
-	_step_player.max_polyphony = 4
-	add_child(_step_player)
-
-
-## Each paw pair (front, back) fires a step when the sign of (left height - right height)
-## flips: the paw that just became the lowest is the one landing. Two pairs approximate
-## the four paw falls of a trot/gallop.
-func _update_footsteps(delta: float) -> void:
-	if _step_player == null:
-		return
-	_since_last_step += delta
-	var locomotion := _current_anim == walk_animation or _current_anim == run_animation
-	if not locomotion:
-		for i in _paw_signs.size():
-			_paw_signs[i] = 0
-		return
-	for i in _paw_pairs.size():
-		var diff := _skeleton.get_bone_global_pose(_paw_pairs[i][0]).origin.y \
-				- _skeleton.get_bone_global_pose(_paw_pairs[i][1]).origin.y
-		var s := signi(int(sign(diff)))
-		if s != 0 and _paw_signs[i] != 0 and s != _paw_signs[i] \
-				and _since_last_step >= footstep_min_interval:
-			_since_last_step = 0.0
-			var running := _current_anim == run_animation
-			_step_player.volume_db = footstep_volume_db + (run_volume_boost_db if running else 0.0)
-			_step_player.pitch_scale = footstep_pitch
-			_step_player.play()
-		if s != 0:
-			_paw_signs[i] = s
-
+# ------------------------------------------------------------------ mood
 
 ## Tail: happy near the player (or sitting with them), sad when left behind for a while.
 func _update_mood(dist: float, delta: float) -> void:
