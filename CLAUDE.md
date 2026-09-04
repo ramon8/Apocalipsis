@@ -277,6 +277,28 @@ bisagra en el poste izquierdo (`hinge_right` para el otro) y la abre y cierra co
 lado contrario al jugador. Abierta no colisiona; la colisión vuelve al terminar de cerrar. La valla se regenera por tramos entre puertas; con la curva
 cerrada y puertas, los tramos dan la vuelta hasta la primera puerta.
 
+**Exclusión de dispersión.** Cualquier nodo del grupo `scatter_exclusion` con un método
+`clearance_at(xz) -> float` (negativo = vetado) impide que `ScatterWorld` plante encima.
+Lo implementan `Fence` (la línea con `scatter_margin`, y el interior si la curva está
+cerrada) y `Lake` (todo el interior). El cálculo lo hace `CurveClearance`
+(`scenes/shared/curve_clearance.gd`) a partir de una `Curve3D`: paso de ~1 m, rechazo por
+bbox y test punto-en-polígono. Únete al grupo en `_enter_tree`, no en `_ready`, para que
+exista cuando `ScatterWorld` genere sus celdas al cargar.
+
+**Lago.** `Lake` (`scenes/environment/lake/lake.gd`, escena `lake.tscn`) es un `Path3D`
+cerrado: la curva es la orilla. Un plano cubre el bbox y un `SubViewport` pinta la máscara
+de forma: R = distancia a la orilla en `mask_range` metros (relleno + `distance_rings`
+anillos), G = interior (relleno sumado con blend ADD). `water.gdshader` descarta fuera,
+colorea somero/profundo por distancia, anima ondas y pone espuma en bandas junto a la
+orilla. Comparte el interruptor `pixel_art` con el suelo. Colisión: cajas a lo largo de la
+orilla retranqueadas `wade_distance` (`Geometry2D.offset_polygon`). Sin rocas ni juncos
+todavía.
+
+**Nodos que se recolocan solos.** No uses `set_notify_transform` en un hijo que su padre
+recoloca al cargar (`FenceGate` lo hacía): el motor lanza `Condition "p_elem->_root !=
+this"`. Sondea la transform en `_process` solo en editor, como `GroundPaths` y `FenceGate`.
+Y para regenerar hijos con colisión usa `remove_child` + `queue_free`, no `free()`.
+
 **Capturas de pantalla.** Headless no compila shaders. Para validar un shader o ver el
 resultado sin abrir el editor:
 

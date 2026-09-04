@@ -13,9 +13,9 @@ Orden propuesto por impacto visual por hora de trabajo. Marca lo hecho.
 - [x] **Hierba verdosa a parches.** Sustituye a la hierba de blades (demasiado ruido).
       Manchas verdes sobre el suelo claro por ruido en el shader, más densas lejos de los
       caminos, con snap a paleta.
-- [ ] **Lago.** Plano con shader: agua oscura, ondulación con el ruido del viento, espuma en
-      la orilla por profundidad, snap a paleta. Juncos con un `ScatterArea` y el shader de
-      hierba estirado. Rocas en la orilla.
+- [x] **Lago.** `Lake` sobre `Path3D`: agua oscura, ondas, espuma en la orilla, colisión
+      de vadeo, sin árboles dentro.
+- [ ] **Orilla del lago:** juncos con un `ScatterArea` y el shader de hierba estirado, rocas.
 - [ ] **Oscuridad en los bordes.** Niebla por distancia oscura en el `Environment` o
       vignette fuerte en el post del `RetroRenderer`.
 - [ ] **Rocas y peñascos.** Modelo o procedural, vía `ScatterArea`.
@@ -24,7 +24,7 @@ Orden propuesto por impacto visual por hora de trabajo. Marca lo hecho.
 
 - [x] **Vallas por `Path3D`.** Postes cada N metros, dos travesaños, madera con el shader
       del banco, colisión por segmento. Cierra corrales dibujando la curva. Puertas
-      (`FenceGate`) que se abren con la E.
+      (`FenceGate`) que se abren con la E. Los corrales quedan sin árboles.
 - [ ] **Campo de cultivo.** `ScatterArea` rectangular en rejilla con un tallo de trigo y el
       shader de viento de los arbustos.
 - [ ] **Cobertizo abierto.** Tejado sobre postes, procedural como el banco.

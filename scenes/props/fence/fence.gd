@@ -89,6 +89,13 @@ const WOOD_SHADER := preload("res://scenes/props/bench/shaders/wood.gdshader")
 ## Grosor de la caja de colision de cada tramo (m).
 @export_range(0.05, 1.0, 0.05) var collision_thickness := 0.25
 
+@export_group("Dispersion")
+## Se anade al grupo "scatter_exclusion": ScatterWorld no planta arboles ni arbustos sobre la
+## valla ni (si la curva es cerrada) dentro del corral.
+@export var clear_scatter := true
+## Margen (m) a cada lado de la valla que tambien queda libre.
+@export_range(0.0, 5.0, 0.25) var scatter_margin := 1.0
+
 @export_group("Varios")
 ## 0 = semilla por posicion (estable); otro valor = fija ese aspecto.
 @export var seed := 0:
@@ -106,11 +113,25 @@ var _body: StaticBody3D
 var _post_mat: ShaderMaterial
 var _rail_mat: ShaderMaterial
 var _building := false
+var _clearance: CurveClearance
 
 
 func _ready() -> void:
 	curve_changed.connect(_rebuild)
 	_rebuild()
+
+
+func _enter_tree() -> void:
+	add_to_group("scatter_exclusion")
+
+
+## Holgura (m) desde un punto del mundo (XZ): negativa sobre la valla o dentro del corral.
+func clearance_at(world_xz: Vector2) -> float:
+	if not clear_scatter or curve == null:
+		return INF
+	if _clearance == null:
+		_clearance = CurveClearance.from_curve(curve, global_transform, curve.closed, scatter_margin, true)
+	return _clearance.clearance_at(world_xz)
 
 
 func _set_param(pname: String, value: Variant) -> void:
@@ -132,7 +153,8 @@ func _make_material() -> ShaderMaterial:
 func _clear() -> void:
 	for n in [_posts, _rails, _body]:
 		if n:
-			n.free()
+			remove_child(n)
+			n.queue_free()
 	_posts = null
 	_rails = null
 	_body = null
@@ -211,6 +233,7 @@ func _rebuild() -> void:
 	if not is_inside_tree() or _building:
 		return
 	_building = true
+	_clearance = null
 	_clear()
 	var data := _sections()
 	var sections: Array = data.sections

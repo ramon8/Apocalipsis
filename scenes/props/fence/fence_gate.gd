@@ -34,17 +34,37 @@ var _tween: Tween
 var _post_height := 1.05
 var _rail_radius := 0.045
 var _rail_span := Vector2(0.4, 0.85)
-var _snapping := false
+var _snapped_xform := Transform3D()
+var _editor_timer := 0.0
 var _open_dir := 1.0  # +1 / -1: sentido de giro de la ultima apertura (lejos del jugador)
 
 
 func _ready() -> void:
-	set_notify_transform(true)
 	rebuild()
+	# Anadida a una valla que ya estaba construida (runtime o editor): que abra el hueco.
+	# Al cargar la escena la valla aun no esta lista y se encarga ella en su _ready.
+	var f := get_parent()
+	if f and f.is_node_ready():
+		_notify_fence()
 
 
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_TRANSFORM_CHANGED and not _snapping and is_inside_tree():
+func _exit_tree() -> void:
+	var f := get_parent()
+	if f and f.is_node_ready() and f.has_method("_rebuild"):
+		f._rebuild.call_deferred()  # cerrar el hueco cuando se quita la puerta
+
+
+# En el editor, si el usuario arrastra la puerta, la valla la vuelve a pegar a la curva.
+# (Sondeo en vez de NOTIFICATION_TRANSFORM_CHANGED: esa notificacion, combinada con que
+# la valla recoloca la puerta al cargar, dispara un error interno del motor.)
+func _process(delta: float) -> void:
+	if not Engine.is_editor_hint():
+		return
+	_editor_timer += delta
+	if _editor_timer < 0.3:
+		return
+	_editor_timer = 0.0
+	if not transform.is_equal_approx(_snapped_xform):
 		_notify_fence()
 
 
@@ -63,9 +83,8 @@ func snap_to(local_pos: Vector3, dir: Vector3, post_height: float, rail_radius: 
 	# Solo tocar la transform si cambia de verdad: la notificacion de transform es diferida
 	# y volveria a pedir un rebuild a la valla en bucle.
 	if not transform.is_equal_approx(target):
-		_snapping = true
 		transform = target
-		_snapping = false
+	_snapped_xform = target
 	_post_height = post_height
 	_rail_radius = rail_radius
 	_rail_span = rail_span
@@ -77,7 +96,8 @@ func rebuild() -> void:
 		return
 	for n in [_leaf, _zone]:
 		if n:
-			n.free()
+			remove_child(n)
+			n.queue_free()  # free() en el mismo frame en que se registra la colision da errores en el servidor de fisica
 	_leaf = null
 	_zone = null
 	var fence := get_parent()

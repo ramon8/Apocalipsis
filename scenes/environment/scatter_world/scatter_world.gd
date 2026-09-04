@@ -60,6 +60,9 @@ extends Node3D
 ## `path_clearance` metros de su borde.
 @export var paths: GroundPaths
 @export_range(0.0, 10.0, 0.25) var path_clearance := 1.0
+## Ademas, cualquier nodo del grupo "scatter_exclusion" con clearance_at(xz) (vallas,
+## lagos...) veta sus posiciones. Se consultan al generar cada celda.
+@export var use_exclusion_group := true
 
 @export_group("Forest shape")
 ## 0 = bosque uniforme; 1 = manchas de bosque y claros segun el ruido.
@@ -314,6 +317,11 @@ func _cell_props(c: Vector2i) -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = _cell_seed(c)
 	var out := []
+	var exclusions: Array[Node] = []
+	if use_exclusion_group and is_inside_tree():
+		for n in get_tree().get_nodes_in_group("scatter_exclusion"):
+			if n.has_method("clearance_at"):
+				exclusions.append(n)
 	var target := int(round(cell_size * cell_size / 100.0 * prop_density))
 	var centre := _cell_centre(c)
 	var placed: Array[Vector2] = []
@@ -324,8 +332,10 @@ func _cell_props(c: Vector2i) -> Array:
 		var keep := lerpf(1.0, smoothstep(patch_threshold - 0.15, patch_threshold + 0.15, n), patchiness)
 		if rng.randf() > keep:
 			continue
-		if paths and paths.clearance_at(Vector2(global_position.x + centre.x + p.x,
-				global_position.z + centre.z + p.y)) < path_clearance:
+		var world_xz := Vector2(global_position.x + centre.x + p.x, global_position.z + centre.z + p.y)
+		if paths and paths.clearance_at(world_xz) < path_clearance:
+			continue
+		if _excluded(world_xz, exclusions):
 			continue
 		var ok := true
 		for q in placed:
@@ -340,6 +350,14 @@ func _cell_props(c: Vector2i) -> Array:
 				"s": 1.0 + rng.randf_range(-size_variation, size_variation), "yaw": rng.randf_range(0.0, TAU),
 				"v": rng.randi_range(0, _tree_variant_count() - 1)})
 	return out
+
+
+## true si algun nodo del grupo "scatter_exclusion" veta el punto.
+func _excluded(world_xz: Vector2, exclusions: Array[Node]) -> bool:
+	for n in exclusions:
+		if n.clearance_at(world_xz) < 0.0:
+			return true
+	return false
 
 
 func _cell_seed(c: Vector2i) -> int:

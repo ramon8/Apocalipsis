@@ -20,6 +20,7 @@
 [ext_resource type="Script" uid="uid://oop64piapaoq" path="res://scenes/environment/paths/ground_path.gd" id="19_path"]
 [ext_resource type="PackedScene" path="res://scenes/props/fence/fence.tscn" id="20_fence"]
 [ext_resource type="Script" uid="uid://dhteqns123r3b" path="res://scenes/props/fence/fence_gate.gd" id="21_gate"]
+[ext_resource type="PackedScene" path="res://scenes/environment/lake/lake.tscn" id="22_lake"]
 
 [sub_resource type="Gradient" id="Gradient_trceg"]
 offsets = PackedFloat32Array(0, 0.12, 0.5, 0.88, 1)
@@ -75,6 +76,14 @@ size = Vector2(1000, 1000)
 [sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
 size = Vector3(1000, 1, 1000)
 
+[sub_resource type="Curve3D" id="Curve3D_lake"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 14.74, 0, 0.0, 0, 0, 0, 0, 0, 0, 13.12, 0, 6.55, 0, 0, 0, 0, 0, 0, 4.75, 0, 10.05, 0, 0, 0, 0, 0, 0, -5.1, 0, 10.79, 0, 0, 0, 0, 0, 0, -13.43, 0, 6.71, 0, 0, 0, 0, 0, 0, -13.91, 0, 0.0, 0, 0, 0, 0, 0, 0, -11.05, 0, -5.52, 0, 0, 0, 0, 0, 0, -5.44, 0, -11.52, 0, 0, 0, 0, 0, 0, 4.59, 0, -9.71, 0, 0, 0, 0, 0, 0, 11.91, 0, -5.95),
+"tilts": PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"closed": true
+}
+point_count = 10
+
 [node name="Main" type="Node" unique_id=1477144514]
 
 [node name="World" type="Node3D" parent="." unique_id=863254421]
@@ -121,6 +130,9 @@ script = ExtResource("19_path")
 [node name="Fence" parent="World" unique_id=566937611 instance=ExtResource("20_fence")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, -24)
 curve = SubResource("Curve3D_pen")
+wood_light = Color(0.10980392, 0.0627451, 0.03529412, 1)
+wood_dark = Color(0.10980392, 0.0627451, 0.03529412, 1)
+bark_color = Color(0.10980392, 0.0627451, 0.03529412, 1)
 
 [node name="Gate" type="Node3D" parent="World/Fence" unique_id=467862174]
 transform = Transform3D(0.99388367, 0, 0.11043232, 0, 1, 0, 0.11043232, 0, -0.99388367, 5.009833, 0, 0.5566481)
@@ -129,6 +141,10 @@ script = ExtResource("21_gate")
 [node name="Gate2" type="Node3D" parent="World/Fence" unique_id=1810110556]
 transform = Transform3D(-0.86824375, 0, 0.49613792, 0, 1, 0, 0.49613792, 0, 0.86824375, 1.6871319, 0, -7.678361)
 script = ExtResource("21_gate")
+
+[node name="Lake" parent="World" instance=ExtResource("22_lake")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 62, 0, 6)
+curve = SubResource("Curve3D_lake")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="World" unique_id=235434014]
 environment = SubResource("Environment_env")
