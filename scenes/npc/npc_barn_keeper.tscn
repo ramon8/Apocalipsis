@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/npc/npc.tscn" id="1_base"]
+
+[node name="BarnKeeper" instance=ExtResource("1_base")]
+speaker_name = "Farmer"
+show_exclamation = false
+lines = Array[String](["Mind the hay, it's fresh.", "Been a rough season around here."])
+watch_campfire_enabled = false
+watch_pot_enabled = true
+voice_pitch = 0.85
+sit_on_floor = true
+farewell_lines = Array[String](["...Sorry about that."])

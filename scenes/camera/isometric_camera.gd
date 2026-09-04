@@ -102,6 +102,17 @@ var _target_pitch := 0.0
 var _pitch := 0.0
 var _dragging := false
 var _lean := Vector3.ZERO
+var _shake_time := 0.0
+var _shake_duration := 0.0
+var _shake_strength := 0.0
+
+
+## Sacude la camara: `strength` en metros de desplazamiento maximo, decae hasta 0 en
+## `duration` segundos. Se aplica con h_offset/v_offset, sin tocar el seguimiento.
+func shake(strength := 0.25, duration := 0.4) -> void:
+	_shake_strength = maxf(strength, _shake_strength * (_shake_time / maxf(_shake_duration, 0.001)))
+	_shake_duration = duration
+	_shake_time = duration
 
 
 func _ready() -> void:
@@ -132,6 +143,16 @@ func _process(delta: float) -> void:
 		rotation.y = lerp_angle(rotation.y, _target_yaw, k)
 		_pitch = lerpf(_pitch, _target_pitch, k)
 	_pivot.rotation.x = -deg_to_rad(_pitch)
+
+	if _shake_time > 0.0:
+		_shake_time = maxf(_shake_time - delta, 0.0)
+		var k := _shake_time / maxf(_shake_duration, 0.001)
+		var amp := _shake_strength * k * k
+		_camera.h_offset = randf_range(-amp, amp)
+		_camera.v_offset = randf_range(-amp, amp)
+		if _shake_time == 0.0:
+			_camera.h_offset = 0.0
+			_camera.v_offset = 0.0
 
 	_update_mouse_lean(delta)
 

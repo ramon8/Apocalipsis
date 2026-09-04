@@ -10,7 +10,7 @@ extends CharacterBody3D
 ## Tail overlays (OverlayAnimModifier): happy when close to the player or sitting with
 ## them, sad when left behind for a while.
 
-enum State { FOLLOW, HANG_AROUND, GO_SIT, SIT }
+enum State { FOLLOW, HANG_AROUND, GO_SIT, SIT, GO_STAY, STAY }
 
 @export_group("Target")
 @export var target: Player
@@ -40,6 +40,12 @@ enum State { FOLLOW, HANG_AROUND, GO_SIT, SIT }
 @export_range(0.0, 3.0, 0.1) var speed_reaction_time := 0.8
 ## Random pause (x..y s) before the dog reacts to the player walking away.
 @export var reaction_time_range := Vector2(0.3, 1.0)
+
+@export_group("Fire")
+## The dog never goes closer than this to a campfire (destinations are pushed out of
+## this radius and the steering is repelled by it).
+@export var fire_avoid_radius := 2.2
+@export var fire_avoid_strength := 1.6
 
 @export_group("Hang around")
 ## Radius around the player for wander points.
@@ -90,7 +96,7 @@ enum State { FOLLOW, HANG_AROUND, GO_SIT, SIT }
 @export var footsteps_enabled := true
 @export var footstep_stream: AudioStream = preload("res://assets/audio/step.wav")
 ## Base volume. Paws are lighter than boots: keep it well below the player's.
-@export_range(-40.0, 6.0, 0.5) var footstep_volume_db := -22.0
+@export_range(-40.0, 6.0, 0.5) var footstep_volume_db := -28.0
 ## Base pitch: a small dog patters higher than the player's steps.
 @export_range(0.5, 2.0, 0.05) var footstep_pitch := 1.35
 @export_range(1.0, 2.0, 0.01) var footstep_random_pitch := 1.15
@@ -105,7 +111,7 @@ enum State { FOLLOW, HANG_AROUND, GO_SIT, SIT }
 @export_group("Bark")
 @export var bark_enabled := true
 @export var bark_stream: AudioStream = preload("res://assets/audio/dog_bark.mp3")
-@export_range(-40.0, 6.0, 0.5) var bark_volume_db := -6.0
+@export_range(-40.0, 6.0, 0.5) var bark_volume_db := -12.0
 @export_range(1.0, 2.0, 0.01) var bark_random_pitch := 1.15
 @export_range(0.0, 12.0, 0.5) var bark_random_volume_db := 3.0
 ## Minimum seconds between barks, whatever the trigger (keeps a single clip from tiring).
@@ -119,6 +125,10 @@ enum State { FOLLOW, HANG_AROUND, GO_SIT, SIT }
 
 @export_group("Rendering")
 @export var nearest_texture_filter := true
+## 1-px dark outline like the player's (same shader), for readability.
+@export var outline_enabled := true
+@export var outline_color := Color(0.03, 0.02, 0.02)
+@export_range(0.5, 4.0, 0.5) var outline_width_px := 1.0
 
 var state := State.FOLLOW
 
@@ -151,6 +161,31 @@ var _bark_ready_at := 0.0  # Time (s) the cooldown ends
 var _long_chase := false  # this FOLLOW involved a real catch-up run (greet bark on arrival)
 var _fire_focus: Node3D  # campfire being stared at (fire reaction in progress)
 var _fire_react_timer := 0.0
+var _stay_pos := Vector3.ZERO  # STAY: spot where the dog sits and stays for good
+var _gosit_moved := false  # GO_SIT: ya ha ido hacia el jugador al menos una vez
+
+
+## Send the dog to `pos` and make it sit there indefinitely (it stops following the
+## player until release() is called). Used e.g. to leave the dog with an NPC.
+func stay_at(pos: Vector3) -> void:
+	_stay_pos = _away_from_fires(pos)  # nunca sentarse dentro del radio del fuego
+	if state == State.SIT or _sit_transition:
+		_begin_stand_up()  # gets up first; _on_stood_up re-routes to GO_STAY
+	_change_state(State.GO_STAY)
+	_set_destination(_stay_pos)
+
+
+func release() -> void:
+	if state == State.STAY and not _sit_transition:
+		_stay_pos = Vector3.ZERO
+		_begin_stand_up()
+	elif state == State.GO_STAY:
+		_stay_pos = Vector3.ZERO
+		_change_state(State.FOLLOW)
+
+
+func is_staying() -> bool:
+	return state == State.STAY or state == State.GO_STAY
 
 
 func _ready() -> void:
@@ -202,13 +237,20 @@ func _setup_overlays() -> void:
 
 ## Nearest filtering on the imported materials (glTF defaults to linear, which blurs texels).
 func _prepare_materials(node: Node) -> void:
-	if node is MeshInstance3D and nearest_texture_filter:
+	if node is MeshInstance3D and (nearest_texture_filter or outline_enabled):
 		var mi := node as MeshInstance3D
 		for i in mi.get_surface_override_material_count():
 			var mat := mi.get_active_material(i)
 			if mat is BaseMaterial3D:
 				var copy := (mat as BaseMaterial3D).duplicate() as BaseMaterial3D
-				copy.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+				if nearest_texture_filter:
+					copy.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+				if outline_enabled:
+					var om := ShaderMaterial.new()
+					om.shader = preload("res://scenes/player/shaders/outline.gdshader")
+					om.set_shader_parameter("color", outline_color)
+					om.set_shader_parameter("width_px", outline_width_px)
+					copy.next_pass = om
 				mi.set_surface_override_material(i, copy)
 	for child in node.get_children():
 		_prepare_materials(child)
@@ -238,9 +280,10 @@ func _physics_process(delta: float) -> void:
 		_update_state(dist, delta)
 	_steer(delta)
 	move_and_slide()
+	_clamp_out_of_fires()
 
 	var ground_speed := Vector2(velocity.x, velocity.z).length()
-	if not _sit_transition and state != State.SIT:
+	if not _sit_transition and state != State.SIT and state != State.STAY:
 		_update_locomotion_anim(ground_speed)
 	_update_mood(dist, delta)
 	_update_stuck(ground_speed, delta)
@@ -248,6 +291,11 @@ func _physics_process(delta: float) -> void:
 
 
 # ------------------------------------------------------------------ state machine
+
+## El jugador esta "en reposo bajo": agachado o sentado en el suelo -> el perro viene a sentarse.
+func _player_resting() -> bool:
+	return target.is_crouching() or (target.has_method("is_sitting") and target.is_sitting())
+
 
 func _update_state(dist: float, delta: float) -> void:
 	match state:
@@ -259,7 +307,7 @@ func _update_state(dist: float, delta: float) -> void:
 				_change_state(State.HANG_AROUND)
 		State.HANG_AROUND:
 			# Crouching player: keep living for a random while, THEN come to sit.
-			if target.is_crouching():
+			if _player_resting():
 				if _sit_wait < 0.0:
 					_sit_wait = _rng.randf_range(sit_delay_range.x, sit_delay_range.y)
 				_sit_wait -= delta
@@ -280,15 +328,25 @@ func _update_state(dist: float, delta: float) -> void:
 				_react_timer = -1.0
 			_update_hang_around(delta)
 		State.GO_SIT:
-			if not target.is_crouching():
+			if not _player_resting():
 				_change_state(State.HANG_AROUND)
-			elif dist <= sit_distance:
-				_begin_sit()
+			elif dist <= sit_distance or (_gosit_moved and not _has_destination \
+					and dist <= sit_distance + fire_avoid_radius):
+				_begin_sit()  # (o lo mas cerca que el fuego le deja llegar)
 			else:
 				_set_destination(target.global_position)
+				_gosit_moved = true
 		State.SIT:
-			if not target.is_crouching():
+			if not _player_resting():
 				_begin_stand_up()
+		State.GO_STAY:
+			_set_destination(_stay_pos)
+			var to_spot := _stay_pos - global_position
+			to_spot.y = 0.0
+			if to_spot.length() <= 0.45:
+				_begin_sit(State.STAY)
+		State.STAY:
+			pass  # sits there for good until release()
 
 
 func _change_state(new_state: State) -> void:
@@ -301,6 +359,7 @@ func _change_state(new_state: State) -> void:
 	state = new_state
 	_has_destination = false
 	_behaviour_timer = 0.0
+	_gosit_moved = false
 	_react_timer = -1.0
 	_sit_wait = -1.0
 	_stop_sniffing()
@@ -338,8 +397,8 @@ func _stop_sniffing() -> void:
 
 # ------------------------------------------------------------------ sitting
 
-func _begin_sit() -> void:
-	state = State.SIT
+func _begin_sit(final_state := State.SIT) -> void:
+	state = final_state
 	_has_destination = false
 	_speed = 0.0
 	_stop_sniffing()
@@ -374,34 +433,91 @@ func _begin_stand_up() -> void:
 
 func _on_stood_up(_name: StringName) -> void:
 	_sit_transition = false
-	_change_state(State.HANG_AROUND)
+	if _stay_pos != Vector3.ZERO:
+		_change_state(State.GO_STAY)  # se levanto para ir a su sitio
+		_set_destination(_stay_pos)
+	elif state == State.STAY or state == State.GO_STAY:
+		_change_state(State.FOLLOW)  # liberado
+	else:
+		_change_state(State.HANG_AROUND)
 	_play(idle_animation)
 
 
 # ------------------------------------------------------------------ movement
 
 func _set_destination(pos: Vector3) -> void:
-	_destination = Vector3(pos.x, global_position.y, pos.z)
+	_destination = _away_from_fires(Vector3(pos.x, global_position.y, pos.z))
 	_has_destination = true
+
+
+## Campfires in the scene (cached, refreshed now and then).
+var _fires: Array = []
+var _fires_timer := 0.0
+
+func _campfires() -> Array:
+	_fires_timer -= get_physics_process_delta_time()
+	if _fires_timer <= 0.0:
+		_fires_timer = 2.0
+		_fires = get_tree().get_nodes_in_group("campfire")
+	return _fires
+
+
+## Moves `pos` radially out of any campfire's keep-out radius.
+func _away_from_fires(pos: Vector3) -> Vector3:
+	for fire in _campfires():
+		var fp: Vector3 = fire.global_position
+		var d := Vector2(pos.x - fp.x, pos.z - fp.z)
+		if d.length() < fire_avoid_radius:
+			var dir := d.normalized() if d.length() > 0.01 else Vector2(1.0, 0.0)
+			pos.x = fp.x + dir.x * fire_avoid_radius * 1.05
+			pos.z = fp.z + dir.y * fire_avoid_radius * 1.05
+	return pos
+
+
+## Hard limit: whatever the steering did, never end a frame inside a fire's radius.
+func _clamp_out_of_fires() -> void:
+	for fire in _campfires():
+		var fp: Vector3 = fire.global_position
+		var d := Vector2(global_position.x - fp.x, global_position.z - fp.z)
+		if d.length() < fire_avoid_radius:
+			var dir := d.normalized() if d.length() > 0.01 else Vector2(1.0, 0.0)
+			global_position.x = fp.x + dir.x * fire_avoid_radius
+			global_position.z = fp.z + dir.y * fire_avoid_radius
+
+
+## Repulsion vector (XZ) from nearby campfires, strongest at the keep-out radius.
+func _fire_repulsion() -> Vector3:
+	var push := Vector3.ZERO
+	for fire in _campfires():
+		var fp: Vector3 = fire.global_position
+		var d := Vector3(global_position.x - fp.x, 0.0, global_position.z - fp.z)
+		var reach := fire_avoid_radius + 1.0
+		if d.length() < reach and d.length() > 0.01:
+			push += d.normalized() * (1.0 - d.length() / reach) * fire_avoid_strength
+	return push
 
 
 ## Same weighty movement as the player: speed is a scalar and the dog always moves along
 ## its facing, so direction changes become arcs.
 func _steer(delta: float) -> void:
 	var target_speed := 0.0
-	if _has_destination and not _sit_transition and state != State.SIT:
+	if _has_destination and not _sit_transition and state != State.SIT and state != State.STAY:
 		var to_dest := _destination + _avoid_offset - global_position
 		to_dest.y = 0.0
-		var arrive := stop_distance if state == State.FOLLOW \
+		var arrive := 0.3 if state == State.GO_STAY else stop_distance if state == State.FOLLOW \
 				else (sit_distance if state == State.GO_SIT else 0.4)
 		if to_dest.length() <= arrive:
 			_has_destination = false
 		else:
-			var dir := to_dest.normalized()
+			var dir := (to_dest.normalized() + _fire_repulsion()).normalized()
 			_face_direction(dir, delta)
 			target_speed = run_speed if _should_run() else walk_speed
 			# Slow into the stop so the dog doesn't overshoot and spin.
 			target_speed = minf(target_speed, (to_dest.length() - arrive) * 2.0 + 0.5)
+	if not _has_destination and (state == State.FOLLOW or state == State.HANG_AROUND):
+		var push := _fire_repulsion()
+		if push.length() > 0.55:  # parado casi encima del fuego: apartarse
+			_set_destination(global_position + push.normalized() * 1.5)
 	if target_speed > _speed:
 		_speed = move_toward(_speed, target_speed, acceleration * delta)
 	else:
@@ -599,7 +715,7 @@ func _update_mood(dist: float, delta: float) -> void:
 		return
 	var was_sad := _sad_timer > sad_delay
 	_sad_timer = _sad_timer + delta if dist > sad_distance else 0.0
-	if dist <= happy_distance or state == State.SIT:
+	if dist <= happy_distance or state == State.SIT or state == State.STAY:
 		if _anim.has_animation(tail_happy_animation):
 			_tail_overlay.play(_anim.get_animation(tail_happy_animation))
 	elif _sad_timer > sad_delay:

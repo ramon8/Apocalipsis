@@ -1,22 +1,38 @@
 [gd_scene format=3 uid="uid://dirhclo63wfb1"]
 
-[ext_resource type="PackedScene" path="res://scenes/environment/scatter_world.tscn" id="1_85g3d"]
-[ext_resource type="PackedScene" uid="uid://qldxvm3302sa" path="res://scenes/props/tree.tscn" id="2_eb6dy"]
+[ext_resource type="PackedScene" path="res://scenes/environment/scatter_world/scatter_world.tscn" id="1_85g3d"]
+[ext_resource type="PackedScene" uid="uid://qldxvm3302sa" path="res://scenes/props/tree/tree.tscn" id="2_eb6dy"]
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_player"]
 [ext_resource type="PackedScene" uid="uid://1eftepgfsafa" path="res://scenes/camera/isometric_camera.tscn" id="3_camera"]
-[ext_resource type="PackedScene" path="res://scenes/props/tree_2.tscn" id="3_trceg"]
+[ext_resource type="PackedScene" path="res://scenes/props/tree/tree_2.tscn" id="3_trceg"]
 [ext_resource type="Texture2D" uid="uid://e6aio3lmbs4e" path="res://assets/textures/dirt.png" id="4_checker"]
-[ext_resource type="PackedScene" uid="uid://c7xgbnlulgfl4" path="res://scenes/environment/wind.tscn" id="7_wind"]
-[ext_resource type="PackedScene" path="res://scenes/props/backpack.tscn" id="8_backpack"]
-[ext_resource type="Material" uid="uid://lxwkkoxjmin0" path="res://scenes/environment/ground_material.tres" id="9_ground"]
-[ext_resource type="PackedScene" uid="uid://4ma6b4bqmghe" path="res://scenes/props/campfire.tscn" id="11_trceg"]
-[ext_resource type="PackedScene" uid="uid://deoka3rnpnlk3" path="res://scenes/props/pot.tscn" id="12_trceg"]
+[ext_resource type="PackedScene" uid="uid://c7xgbnlulgfl4" path="res://scenes/environment/wind/wind.tscn" id="7_wind"]
+[ext_resource type="Material" uid="uid://lxwkkoxjmin0" path="res://scenes/environment/ground/ground_material.tres" id="9_ground"]
+[ext_resource type="PackedScene" uid="uid://4ma6b4bqmghe" path="res://scenes/props/campfire/campfire.tscn" id="11_trceg"]
 [ext_resource type="PackedScene" path="res://scenes/companion/dog.tscn" id="13_dog"]
+[ext_resource type="PackedScene" path="res://scenes/props/molino/molino.tscn" id="13_trceg"]
+[ext_resource type="PackedScene" path="res://scenes/environment/day_night/day_night.tscn" id="14_cycle"]
+[ext_resource type="PackedScene" path="res://scenes/interiors/molinos/molino_norte.tscn" id="15_norte"]
+[ext_resource type="PackedScene" path="res://scenes/props/heno/heno.tscn" id="16_jbj1t"]
+[ext_resource type="PackedScene" uid="uid://dg284isaygq4t" path="res://scenes/interiors/molinos/molino_sur.tscn" id="16_sur"]
+[ext_resource type="PackedScene" path="res://scenes/npc/npc.tscn" id="17_muem4"]
+
+[sub_resource type="Gradient" id="Gradient_trceg"]
+offsets = PackedFloat32Array(0, 0.12, 0.5, 0.88, 1)
+colors = PackedColorArray(1, 0.45, 0.2, 1, 1, 0.85, 0.65, 1, 1, 0.98, 0.92, 1, 1, 0.8, 0.55, 1, 1, 0.4, 0.18, 1)
+
+[sub_resource type="Gradient" id="Gradient_a8y0u"]
+offsets = PackedFloat32Array(0, 0.35, 0.55, 1)
+colors = PackedColorArray(0.015, 0.02, 0.06, 1, 0.06, 0.06, 0.14, 1, 0.2, 0.22, 0.42, 1, 0.25, 0.35, 0.55, 1)
+
+[sub_resource type="Gradient" id="Gradient_jkv2x"]
+offsets = PackedFloat32Array(0, 0.35, 0.55, 1)
+colors = PackedColorArray(0.05, 0.06, 0.12, 1, 0.55, 0.3, 0.22, 1, 0.85, 0.55, 0.38, 1, 0.65, 0.7, 0.8, 1)
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 sky_top_color = Color(0.25, 0.35, 0.55, 1)
 sky_horizon_color = Color(0.65, 0.7, 0.8, 1)
-ground_bottom_color = Color(0.15, 0.13, 0.12, 1)
+ground_bottom_color = Color(0.15, 0.21000001, 0.33, 1)
 ground_horizon_color = Color(0.65, 0.7, 0.8, 1)
 
 [sub_resource type="Sky" id="Sky_sky"]
@@ -44,38 +60,55 @@ size = Vector3(1000, 1, 1000)
 
 [node name="World" type="Node3D" parent="." unique_id=863254421]
 
+[node name="DayNightCycle" parent="World" unique_id=417142772 node_paths=PackedStringArray("sun", "world_environment") instance=ExtResource("14_cycle")]
+time_of_day = 9.206268108461233
+day_length_minutes = 4.0
+advance_time = false
+sun = NodePath("../Sun")
+world_environment = NodePath("../WorldEnvironment")
+sun_gradient = SubResource("Gradient_trceg")
+sky_top_gradient = SubResource("Gradient_a8y0u")
+sky_horizon_gradient = SubResource("Gradient_jkv2x")
+
 [node name="ScatterWorld" parent="World" unique_id=1742216399 instance=ExtResource("1_85g3d")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -103.82768, 0, 0)
 tree_scenes = Array[PackedScene]([ExtResource("2_eb6dy"), ExtResource("3_trceg")])
-prop_density = 15.0
+prop_density = 50.0
 bush_weight = 0.25
-prop_min_distance = 1.9
 bush_height = 1.5
 patchiness = 1.0
+patch_scale = 195.0
+patch_threshold = 0.49
+grass_enabled = false
 grass_density = 10.0
 grass_height_range = Vector2(0.18, 0.3)
 grass_base_color = Color(0.10980392, 0.0627451, 0.03529412, 1)
 grass_tip_color = Color(0.10980392, 0.0627451, 0.03529412, 1)
 grass_variation_color = Color(0.10980392, 0.0627451, 0.03529412, 1)
+grass_variation_amount = 0.2
+grass_blade_width = 0.115
 grass_billboard_tilt = 1.0
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="World" unique_id=235434014]
 environment = SubResource("Environment_env")
 
 [node name="Sun" type="DirectionalLight3D" parent="World" unique_id=593195790]
-transform = Transform3D(0.866025, -0.383022, 0.321394, 0, 0.642788, 0.766044, -0.5, -0.663414, 0.55667, 0, 10, 0)
+transform = Transform3D(0.9746152, -0.116596915, 0.19112718, 0, 0.85368544, 0.52078897, -0.22388488, -0.50756943, 0.83201456, 0, 10, 0)
+light_color = Color(1, 0.875078, 0.702085, 1)
+light_energy = 1.2
 shadow_enabled = true
 shadow_blur = 0.0
 directional_shadow_mode = 0
 directional_shadow_fade_start = 1.0
 directional_shadow_max_distance = 250.0
 
-[node name="Floor" type="StaticBody3D" parent="World" unique_id=639489277]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="World/Floor" unique_id=36483498]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.06028366, 0.5, 0.028560638)
+[node name="MeshInstance3D" type="MeshInstance3D" parent="World" unique_id=36483498]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.16101646, -0.115327835, -0.0028800964)
 material_override = ExtResource("9_ground")
 mesh = SubResource("PlaneMesh_floor")
+
+[node name="Floor" type="StaticBody3D" parent="World" unique_id=639489277]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="World/Floor" unique_id=237580305]
 shape = SubResource("BoxShape3D_floor")
@@ -87,11 +120,10 @@ gust_travel_speed = 4.0
 local_direction_variation_deg = 25.0
 
 [node name="Player" parent="World" unique_id=872944500 instance=ExtResource("2_player")]
-transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, 30.14471, 0, 0)
+transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, 38.98434, 0, -6.616728)
 walk_speed = 2.0
 run_speed = 3.8
 acceleration = 24.0
-deceleration = 6.0
 carry_bones = PackedStringArray("hand.l", "hand.r")
 blend_time = 0.5
 walk_anim_reference_speed = 1.25
@@ -105,19 +137,62 @@ target = NodePath("../Player")
 zoom = 55.0
 max_zoom = 80.0
 
-[node name="Backpack" parent="World" unique_id=504992306 instance=ExtResource("8_backpack")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 37.88851, -0.46839952, -0.968462)
-pickup_radius = 0.9
-
 [node name="Campfire" parent="World" unique_id=1285043843 instance=ExtResource("11_trceg")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 36.32557, 0, -5.4844685)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.291958, 0, -18.267353)
 sweep_time = 2.0
 flint_random_volume_db = 2.2
 
 [node name="Dog" parent="World" unique_id=1393326967 node_paths=PackedStringArray("target") instance=ExtResource("13_dog")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 172.77873, 0, 31.642466)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 27.428009, 0, -13.023153)
 target = NodePath("../Player")
 
-[node name="Pot" parent="World" unique_id=856992652 instance=ExtResource("12_trceg")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40.009575, 0, -3.8909638)
-lift_volume_db = -35.0
+[node name="Molino" parent="World" unique_id=1442613619 instance=ExtResource("13_trceg")]
+transform = Transform3D(-0.70710677, 0, 0.70710677, 0, 1, 0, -0.70710677, 0, -0.70710677, -32.57358, 0, -6.6737404)
+blade_speed_rpm = 0.6000000000000014
+grime_amount = 0.4
+weathering_amount = 0.2
+dirt_amount = 0.9
+interior_scene = ExtResource("15_norte")
+
+[node name="Molino2" parent="World" unique_id=1275929520 instance=ExtResource("13_trceg")]
+transform = Transform3D(0.3959371, 0, 0.91827774, 0, 1, 0, -0.91827774, 0, 0.3959371, -36.407265, 0, -19.995117)
+blade_speed_rpm = 3.5
+grime_amount = 0.4
+weathering_amount = 0.45
+dirt_amount = 0.95
+interior_scene = ExtResource("16_sur")
+
+[node name="Heno9" type="Node" parent="World" unique_id=1934328431]
+
+[node name="Heno" parent="World/Heno9" unique_id=1978021364 instance=ExtResource("16_jbj1t")]
+transform = Transform3D(0.96052915, 0, 0.27817917, 0, 1, 0, -0.27817917, 0, 0.96052915, -31.131641, -0.0014903545, -2.6813157)
+
+[node name="Heno2" parent="World/Heno9" unique_id=1779145596 instance=ExtResource("16_jbj1t")]
+transform = Transform3D(0.77197886, 0, 0.63564813, 0, 1, 0, -0.63564813, 0, 0.77197886, -29.36463, -9.536743e-07, -3.5621562)
+
+[node name="Heno3" parent="World/Heno9" unique_id=833958842 instance=ExtResource("16_jbj1t")]
+transform = Transform3D(0.34289303, 0, 0.9393743, 0, 1, 0, -0.9393743, 0, 0.34289303, -28.524992, -2.3841858e-07, -5.2258587)
+
+[node name="Heno4" parent="World/Heno9" unique_id=1619482784 instance=ExtResource("16_jbj1t")]
+transform = Transform3D(0.6866805, 0, 0.7269592, 0, 1, 0, -0.7269592, 0, 0.6866805, -28.875982, 0.99999976, -4.5016594)
+
+[node name="Heno5" parent="World/Heno9" unique_id=7690236 instance=ExtResource("16_jbj1t")]
+transform = Transform3D(0.7161678, 0, 0.697928, 0, 1, 0, -0.697928, 0, 0.7161678, -30.379755, 0.99999976, -3.183074)
+
+[node name="Heno6" parent="World/Heno9" unique_id=700056443 instance=ExtResource("16_jbj1t")]
+transform = Transform3D(0.58115643, 0, 0.81379175, 0, 1, 0, -0.81379175, 0, 0.58115643, -29.627869, 1.9999998, -3.842367)
+
+[node name="Heno7" parent="World/Heno9" unique_id=1109291607 instance=ExtResource("16_jbj1t")]
+transform = Transform3D(0.99926573, 0, 0.0383123, 0, 1, 0, -0.0383123, 0, 0.99926573, -32.04959, 0.07067561, -10.824438)
+
+[node name="Heno8" parent="World/Heno9" unique_id=1045822516 instance=ExtResource("16_jbj1t")]
+transform = Transform3D(0.6081571, -0.7934742, 0.023317017, 0.7928915, 0.60860395, 0.03039982, -0.03831231, 0, 0.99926585, -33.187145, 0.67315996, -10.824438)
+
+[node name="Npc" parent="." unique_id=1532924274 instance=ExtResource("17_muem4")]
+transform = Transform3D(-0.42931247, 0, -0.90315604, 0, 1, 0, 0.90315604, 0, -0.42931247, -24.090452, 0.08111334, -19.770689)
+dog_stays_after_leaving_room = &"molino_sur"
+idle_animation = "Sit_floor"
+head_bones = PackedStringArray("neck", "head")
+head_bone_weights = PackedFloat32Array(0.35, 0.65)
+skin_mesh_names = PackedStringArray("Head")
+hidden_mesh_names = PackedStringArray("Backpack")

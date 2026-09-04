@@ -1,0 +1,35 @@
+[gd_scene format=3 uid="uid://dg284isaygq4t"]
+
+[ext_resource type="PackedScene" path="res://scenes/interiors/room.tscn" id="1_base"]
+[ext_resource type="PackedScene" path="res://scenes/props/heno/heno.tscn" id="2_gc5sg"]
+[ext_resource type="PackedScene" path="res://scenes/npc/npc_barn_keeper.tscn" id="3_y1pnf"]
+[ext_resource type="PackedScene" uid="uid://deoka3rnpnlk3" path="res://scenes/props/pot/pot.tscn" id="4_b1mjb"]
+
+[node name="MolinoSur" unique_id=573158968 instance=ExtResource("1_base")]
+room_id = &"molino_sur"
+
+[node name="Heno" parent="." index="0" unique_id=575376588 instance=ExtResource("2_gc5sg")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.39106846, 0, -2.4472132)
+
+[node name="Heno4" parent="." index="1" unique_id=2035867567 instance=ExtResource("2_gc5sg")]
+transform = Transform3D(0.34834483, 0.9373665, 0, -0.9373665, 0.34834483, 0, 0, 0, 1, 0.7375286, 0.85916924, -2.0078735)
+
+[node name="Heno2" parent="." index="2" unique_id=670124690 instance=ExtResource("2_gc5sg")]
+transform = Transform3D(0.98606795, 0, -0.1663431, 0, 1, 0, 0.1663431, 0, 0.98606795, -0.39106846, 0.8817103, -2.1421242)
+
+[node name="Heno3" parent="." index="3" unique_id=1924315833 instance=ExtResource("2_gc5sg")]
+transform = Transform3D(0.99972636, 0, -0.023390621, 0, 1, 0, 0.023390621, 0, 0.99972636, -0.39106846, 1.7699109, -2.1421242)
+
+[node name="Heno5" parent="." index="4" unique_id=927453845 instance=ExtResource("2_gc5sg")]
+transform = Transform3D(0.55349845, 0, 0.8328501, 0, 1, 0, -0.8328501, 0, 0.55349845, -2.2618945, 0.06973016, -1.1099763)
+
+[node name="BarnKeeper" parent="." index="8" unique_id=829582357 instance=ExtResource("3_y1pnf")]
+transform = Transform3D(-0.5693917, 0, 0.8220663, 0, 1, 0, -0.8220663, 0, -0.5693917, 2.2705815, 0, -0.6865854)
+sit_animation = "Idle"
+head_bones = PackedStringArray("neck", "head")
+head_bone_weights = PackedFloat32Array(0.35, 0.65)
+skin_mesh_names = PackedStringArray("Head")
+hidden_mesh_names = PackedStringArray("Backpack")
+
+[node name="Pot" parent="." index="9" unique_id=695413803 instance=ExtResource("4_b1mjb")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.67996454, 0, 0.08576012)

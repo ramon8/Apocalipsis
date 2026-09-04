@@ -43,6 +43,9 @@ extends CharacterBody3D
 @export var crouch_idle_animation := "crouch_idle"
 @export var crouch_end_animation := "crouch_end"
 @export var crouch_action: StringName = &"crouch"
+## Sentarse en el suelo (tecla 0): transicion al clip en bucle; moverse o repetir levanta.
+@export var sit_animation := "Sit_floor"
+@export var sit_action: StringName = &"sit"
 
 @export_group("Carry")
 ## Huesos de las manos: el objeto llevado se ancla al punto medio entre ambos y se
@@ -58,7 +61,7 @@ extends CharacterBody3D
 ## Input action that drops the backpack (plays the pickup clip in reverse).
 @export var drop_action: StringName = &"drop"
 ## Scene spawned on the ground when dropping.
-@export var backpack_pickup_scene: PackedScene = preload("res://scenes/props/backpack.tscn")
+@export var backpack_pickup_scene: PackedScene = preload("res://scenes/props/backpack/backpack.tscn")
 ## Where the dropped bag appears, relative to the character (forward distance).
 @export var drop_distance := 0.5
 ## Sound played when the bag leaves the hand (same clip as the pickup, pitched down a bit).
@@ -131,6 +134,11 @@ extends CharacterBody3D
 @export var nearest_texture_filter := true
 ## Render the model unshaded (flat texture colours, no lighting). It still casts shadows.
 @export var unshaded_model := false
+## 1-px dark outline (inverted hull in screen space, constant width at any zoom) so the
+## character reads against busy backgrounds and in dark interiors.
+@export var outline_enabled := true
+@export var outline_color := Color(0.03, 0.02, 0.02)
+@export_range(0.5, 4.0, 0.5) var outline_width_px := 1.0
 ## Show or hide the backpack mesh.
 @export var show_backpack := true:
 	set(value):
@@ -143,7 +151,7 @@ extends CharacterBody3D
 ## Draw a flat silhouette wherever the character is hidden behind geometry.
 @export var xray_enabled := true
 ## Material applied as material_overlay to every mesh of the model. Edit colour/alpha/pattern there.
-@export var xray_material: ShaderMaterial = preload("res://scenes/player/xray_silhouette.tres")
+@export var xray_material: ShaderMaterial = preload("res://scenes/player/shaders/xray_silhouette.tres")
 ## Only show the silhouette when the character is completely hidden (all probe points
 ## occluded from the camera). Off = show it on any occluded pixel.
 @export var xray_only_when_fully_hidden := true
@@ -174,6 +182,9 @@ var _camera_rig: Node3D
 var _current_anim := ""
 var _speed := 0.0
 var _action_playing := false
+var _sitting := false
+## Bloqueo externo del movimiento (p. ej. una escena corta): el personaje se queda quieto.
+var movement_locked := false
 var _action_reached := false
 var _action_reverse := false
 var _channel_phase := ""  # "" | "start" | "idle" | "strike" | "end"
@@ -293,7 +304,9 @@ func _physics_process(delta: float) -> void:
 	var running := _is_running()
 	if is_crouching() and input != Vector2.ZERO:
 		stop_channeling()  # crouch_end; el movimiento se libera al terminar el clip
-	if _action_playing:
+	if _sitting and input != Vector2.ZERO:
+		stand_up()
+	if _action_playing or _sitting or movement_locked:
 		direction = Vector3.ZERO
 		running = false
 	var target_speed := run_speed if running else walk_speed
@@ -322,11 +335,17 @@ func _physics_process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if Engine.is_editor_hint():
 		return
-	if event.is_action_pressed(crouch_action):
+	if event.is_action_pressed(sit_action):
+		get_viewport().set_input_as_handled()
+		if _sitting:
+			stand_up()
+		elif not _action_playing and not movement_locked:
+			sit_down()
+	elif event.is_action_pressed(crouch_action):
 		get_viewport().set_input_as_handled()
 		if is_crouching():
 			stop_channeling()
-		elif not _action_playing:
+		elif not _action_playing and not _sitting:
 			start_crouch()
 	elif event.is_action_pressed(drop_action) and show_backpack and not _action_playing and not is_carrying():
 		get_viewport().set_input_as_handled()
@@ -471,6 +490,34 @@ func start_crouch() -> bool:
 
 func is_crouching() -> bool:
 	return _action_playing and _channel.get("kind", "") == "crouch" and _channel_phase != "end"
+
+
+func is_sitting() -> bool:
+	return _sitting
+
+
+## Sentarse en el suelo: funde al clip de sentado y bloquea el movimiento hasta levantarse.
+func sit_down() -> bool:
+	if _anim == null or _sitting or _action_playing:
+		return false
+	var name := _resolve_animation_name(sit_animation)
+	if not _anim.has_animation(name):
+		push_warning("Player: no existe la animacion de sentarse '%s'." % sit_animation)
+		return false
+	_sitting = true
+	_speed = 0.0
+	_anim.get_animation(name).loop_mode = Animation.LOOP_LINEAR
+	_anim.speed_scale = 1.0
+	_anim.play(name, action_blend_time * 3.0)
+	_current_anim = name
+	return true
+
+
+func stand_up() -> void:
+	if not _sitting:
+		return
+	_sitting = false
+	_play(idle_animation)
 
 
 func is_carrying() -> bool:
@@ -684,7 +731,7 @@ func _is_running() -> bool:
 
 ## Picks Idle / Walk / Run from the actual horizontal speed and syncs playback rate to it.
 func _update_animation(speed: float, running: bool) -> void:
-	if _anim == null:
+	if _anim == null or _sitting:
 		return
 	var anim_name := idle_animation
 	var reference_speed := 1.0
@@ -752,9 +799,19 @@ func _prepare_model_materials(node: Node) -> void:
 					copy.stencil_flags = BaseMaterial3D.STENCIL_FLAG_WRITE
 					copy.stencil_compare = BaseMaterial3D.STENCIL_COMPARE_ALWAYS
 					copy.stencil_reference = 1
+				if outline_enabled:
+					copy.next_pass = _make_outline_material()
 				mi.set_surface_override_material(i, copy)
 	for child in node.get_children():
 		_prepare_model_materials(child)
+
+
+func _make_outline_material() -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://scenes/player/shaders/outline.gdshader")
+	m.set_shader_parameter("color", outline_color)
+	m.set_shader_parameter("width_px", outline_width_px)
+	return m
 
 
 func _apply_overlay(node: Node, material: Material) -> void:

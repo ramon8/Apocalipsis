@@ -1,8 +1,0 @@
-[gd_scene load_steps=2 format=3]
-
-[ext_resource type="Script" path="res://scenes/environment/grass_area.gd" id="1_grass"]
-
-[node name="GrassArea" type="MultiMeshInstance3D"]
-script = ExtResource("1_grass")
-size = Vector2(20, 20)
-density = 25.0

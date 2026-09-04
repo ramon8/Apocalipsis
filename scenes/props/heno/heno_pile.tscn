@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scenes/props/heno/heno_pile.gd" id="1_pile"]
+[ext_resource type="PackedScene" uid="uid://bmggk8gvfm43p" path="res://assets/models/heno/heno_variant.glb" id="2_model"]
+
+[node name="HenoPile" type="Node3D"]
+script = ExtResource("1_pile")
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)

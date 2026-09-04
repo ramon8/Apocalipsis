@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scenes/props/molino/molino.gd" id="1_molino"]
+[ext_resource type="PackedScene" uid="uid://qt2btknvk4bn" path="res://assets/models/Molino/Molino.glb" id="2_model"]
+
+[node name="Molino" type="Node3D"]
+script = ExtResource("1_molino")
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
